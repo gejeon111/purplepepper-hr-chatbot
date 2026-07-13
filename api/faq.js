@@ -1,14 +1,22 @@
 const { sql, ensureTables } = require("../lib/db");
 const { isAdmin } = require("../lib/auth");
 
-const VALID_CATEGORIES = ["wifi", "leave", "supplies"];
+async function validateCategory(categoryId) {
+  const { rows } = await sql`SELECT * FROM categories WHERE id = ${categoryId}`;
+  if (rows.length === 0) return "Category not found";
+  if (rows[0].is_system) return "Cannot assign FAQ items to a system category";
+  return null;
+}
 
 module.exports = async function handler(req, res) {
   await ensureTables();
 
   if (req.method === "GET") {
     const { rows } = await sql`
-      SELECT * FROM faq_items ORDER BY category ASC, sort_order ASC, id ASC
+      SELECT id, category_id, question, answer, keywords
+      FROM faq_items
+      WHERE category_id IS NOT NULL
+      ORDER BY category_id ASC, sort_order ASC, id ASC
     `;
     res.status(200).json({ items: rows });
     return;
@@ -20,19 +28,21 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    const { category, question, answer, keywords } = req.body || {};
-    if (!category || !question || !answer) {
-      res.status(400).json({ error: "category, question and answer are required" });
+    const { categoryId, question, answer, keywords } = req.body || {};
+    if (!categoryId || !question || !answer) {
+      res.status(400).json({ error: "categoryId, question and answer are required" });
       return;
     }
-    if (!VALID_CATEGORIES.includes(category)) {
-      res.status(400).json({ error: `category must be one of ${VALID_CATEGORIES.join(", ")}` });
+
+    const validationError = await validateCategory(categoryId);
+    if (validationError) {
+      res.status(400).json({ error: validationError });
       return;
     }
 
     const { rows } = await sql`
-      INSERT INTO faq_items (category, question, answer, keywords)
-      VALUES (${category}, ${question}, ${answer}, ${keywords || ""})
+      INSERT INTO faq_items (category_id, question, answer, keywords)
+      VALUES (${categoryId}, ${question}, ${answer}, ${keywords || ""})
       RETURNING id
     `;
     res.status(201).json({ ok: true, id: rows[0].id });

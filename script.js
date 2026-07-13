@@ -1,9 +1,8 @@
 const messagesEl = document.getElementById("messages");
-const quickQuestionsEl = document.getElementById("quickQuestions");
 const inputForm = document.getElementById("inputForm");
 const userInput = document.getElementById("userInput");
 
-let currentCategory = null;
+let CATEGORIES = [];
 let pollingInterval = null;
 
 function stopPolling() {
@@ -62,68 +61,67 @@ inputForm.addEventListener("submit", (e) => {
   userInput.focus();
 });
 
-function clearMenu() {
-  quickQuestionsEl.innerHTML = "";
+function createMenuCard() {
+  const card = document.createElement("div");
+  card.className = "bubble bot menu-card";
+  messagesEl.appendChild(card);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return card;
 }
 
-function addMenuButton(label, onClick) {
+function addMenuButtonTo(card, label, onClick) {
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.className = "quick-btn";
+  btn.className = "menu-btn";
   btn.textContent = label;
-  btn.addEventListener("click", onClick);
-  quickQuestionsEl.appendChild(btn);
+  btn.addEventListener("click", () => {
+    card.querySelectorAll("button").forEach((b) => {
+      b.disabled = true;
+    });
+    onClick();
+  });
+  card.appendChild(btn);
   return btn;
 }
 
-function renderMenu() {
-  clearMenu();
-
-  if (!currentCategory) {
-    QNA_DATA.categories.forEach((cat) => {
-      addMenuButton(cat.label, () => selectCategory(cat.id));
-    });
-    return;
-  }
-
-  const items = QNA_DATA.qna.filter((item) => item.category === currentCategory);
-  items.forEach((item) => {
-    addMenuButton(item.question, () => selectQuestion(item));
+function showCategoryMenu() {
+  const card = createMenuCard();
+  CATEGORIES.forEach((cat) => {
+    addMenuButtonTo(card, cat.label, () => selectCategory(cat));
   });
-  addMenuButton("◀ 메뉴로", backToMenu);
 }
 
 function backToMenu() {
   stopPolling();
-  currentCategory = null;
-  renderMenu();
+  showCategoryMenu();
 }
 
-function selectCategory(categoryId) {
-  const category = QNA_DATA.categories.find((c) => c.id === categoryId);
+function selectCategory(category) {
   addBubble(category.label, "user");
-  currentCategory = categoryId;
 
-  if (categoryId === "contact") {
-    clearMenu();
-    addMenuButton("새 문의 남기기", () => {
+  if (category.is_system) {
+    const card = createMenuCard();
+    addMenuButtonTo(card, "새 문의 남기기", () => {
       addBubble("새 문의 남기기", "user");
-      clearMenu();
-      addMenuButton("◀ 메뉴로", backToMenu);
       setTimeout(() => renderTicketForm(), 200);
     });
-    addMenuButton("문의 확인하기", () => {
+    addMenuButtonTo(card, "문의 확인하기", () => {
       addBubble("문의 확인하기", "user");
-      clearMenu();
-      addMenuButton("◀ 메뉴로", backToMenu);
       setTimeout(() => renderLookupForm(), 200);
     });
-    addMenuButton("◀ 메뉴로", backToMenu);
+    addMenuButtonTo(card, "◀ 메뉴로", backToMenu);
     return;
   }
 
-  setTimeout(() => addBubble("궁금한 항목을 선택해주세요.", "bot"), 300);
-  renderMenu();
+  setTimeout(() => {
+    addBubble("궁금한 항목을 선택해주세요.", "bot");
+    const card = createMenuCard();
+    const items = QNA_DATA.qna.filter((item) => item.category_id === category.id);
+    items.forEach((item) => {
+      addMenuButtonTo(card, item.question, () => selectQuestion(item));
+    });
+    addMenuButtonTo(card, "◀ 메뉴로", backToMenu);
+  }, 300);
 }
 
 function selectQuestion(item) {
@@ -132,8 +130,7 @@ function selectQuestion(item) {
     addBubble(item.answer, "bot");
     setTimeout(() => {
       addBubble("다른 궁금한 점이 있으신가요?", "bot");
-      currentCategory = null;
-      renderMenu();
+      showCategoryMenu();
     }, 400);
   }, 300);
 }
@@ -193,6 +190,7 @@ function renderTicketForm() {
       card.innerHTML = "";
       card.classList.remove("ticket-form");
       card.textContent = `✅ 문의가 접수되었습니다! 문의번호: HR-${data.id}\n나중에 '문의 확인하기'에서 이 번호와 이메일로 답변을 확인하실 수 있어요.`;
+      showCategoryMenu();
     } catch (err) {
       submitBtn.disabled = false;
       submitBtn.textContent = "문의 제출";
@@ -352,6 +350,17 @@ function renderThreadView(ticketId, email, initialMessages) {
   });
 }
 
+async function loadCategories() {
+  try {
+    const res = await fetch("/api/categories");
+    if (!res.ok) return;
+    const data = await res.json();
+    CATEGORIES = data.categories;
+  } catch (err) {
+    CATEGORIES = [];
+  }
+}
+
 async function loadFaqItems() {
   try {
     const res = await fetch("/api/faq");
@@ -359,7 +368,7 @@ async function loadFaqItems() {
     const data = await res.json();
     QNA_DATA.qna = data.items.map((item) => ({
       id: item.id,
-      category: item.category,
+      category_id: item.category_id,
       question: item.question,
       answer: item.answer,
       keywords: (item.keywords || "")
@@ -368,12 +377,12 @@ async function loadFaqItems() {
         .filter(Boolean)
     }));
   } catch (err) {
-    // keep QNA_DATA.qna empty if FAQ fails to load; menu/free-text search will just find nothing
+    QNA_DATA.qna = [];
   }
 }
 
 (async () => {
-  await loadFaqItems();
-  renderMenu();
+  await Promise.all([loadCategories(), loadFaqItems()]);
   addBubble(`안녕하세요!\n${QNA_DATA.companyName}입니다. 무엇을 도와드릴까요?`, "bot");
+  showCategoryMenu();
 })();

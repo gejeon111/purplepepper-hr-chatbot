@@ -1,6 +1,13 @@
 const { sql, ensureTables } = require("../../lib/db");
 const { isAdmin } = require("../../lib/auth");
 
+async function validateCategory(categoryId) {
+  const { rows } = await sql`SELECT * FROM categories WHERE id = ${categoryId}`;
+  if (rows.length === 0) return "Category not found";
+  if (rows[0].is_system) return "Cannot assign FAQ items to a system category";
+  return null;
+}
+
 module.exports = async function handler(req, res) {
   if (!isAdmin(req)) {
     res.status(401).json({ error: "Unauthorized" });
@@ -11,15 +18,21 @@ module.exports = async function handler(req, res) {
   const { id } = req.query;
 
   if (req.method === "PUT") {
-    const { category, question, answer, keywords } = req.body || {};
-    if (!category || !question || !answer) {
-      res.status(400).json({ error: "category, question and answer are required" });
+    const { categoryId, question, answer, keywords } = req.body || {};
+    if (!categoryId || !question || !answer) {
+      res.status(400).json({ error: "categoryId, question and answer are required" });
+      return;
+    }
+
+    const validationError = await validateCategory(categoryId);
+    if (validationError) {
+      res.status(400).json({ error: validationError });
       return;
     }
 
     const { rows } = await sql`
       UPDATE faq_items
-      SET category = ${category}, question = ${question}, answer = ${answer}, keywords = ${keywords || ""}
+      SET category_id = ${categoryId}, question = ${question}, answer = ${answer}, keywords = ${keywords || ""}
       WHERE id = ${id}
       RETURNING id
     `;
