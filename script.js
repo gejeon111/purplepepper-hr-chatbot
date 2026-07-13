@@ -352,5 +352,28 @@ function renderThreadView(ticketId, email, initialMessages) {
   });
 }
 
-renderMenu();
-addBubble(`안녕하세요!\n${QNA_DATA.companyName}입니다. 무엇을 도와드릴까요?`, "bot");
+async function loadFaqItems() {
+  try {
+    const res = await fetch("/api/faq");
+    if (!res.ok) return;
+    const data = await res.json();
+    QNA_DATA.qna = data.items.map((item) => ({
+      id: item.id,
+      category: item.category,
+      question: item.question,
+      answer: item.answer,
+      keywords: (item.keywords || "")
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean)
+    }));
+  } catch (err) {
+    // keep QNA_DATA.qna empty if FAQ fails to load; menu/free-text search will just find nothing
+  }
+}
+
+(async () => {
+  await loadFaqItems();
+  renderMenu();
+  addBubble(`안녕하세요!\n${QNA_DATA.companyName}입니다. 무엇을 도와드릴까요?`, "bot");
+})();

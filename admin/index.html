@@ -25,7 +25,30 @@
     </div>
 
     <div id="dashboardView" class="admin-panel" style="display:none;">
-      <div id="ticketList"></div>
+      <div class="admin-tabs">
+        <button type="button" class="admin-tab active" data-tab="tickets">문의 목록</button>
+        <button type="button" class="admin-tab" data-tab="faq">FAQ 관리</button>
+      </div>
+
+      <div id="ticketsTab" class="admin-tab-panel">
+        <div id="ticketList"></div>
+      </div>
+
+      <div id="faqTab" class="admin-tab-panel" style="display:none;">
+        <div id="faqForm" class="faq-form">
+          <select id="faqCategory">
+            <option value="wifi">📶 와이파이</option>
+            <option value="leave">🗓️ 연차 및 휴가</option>
+            <option value="supplies">🖇️ 사무실 물품</option>
+          </select>
+          <input type="text" id="faqQuestion" placeholder="질문 (예: 4층 와이파이 비밀번호가 뭔가요?)" />
+          <textarea id="faqAnswer" placeholder="답변"></textarea>
+          <input type="text" id="faqKeywords" placeholder="검색 키워드, 쉼표로 구분 (예: 4층, 와이파이, 비밀번호)" />
+          <button type="button" id="faqAddBtn">FAQ 추가</button>
+          <div id="faqFormError" class="admin-error"></div>
+        </div>
+        <div id="faqList"></div>
+      </div>
     </div>
   </div>
 

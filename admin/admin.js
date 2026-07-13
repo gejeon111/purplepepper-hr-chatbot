@@ -5,6 +5,23 @@ const loginBtn = document.getElementById("loginBtn");
 const loginError = document.getElementById("loginError");
 const ticketList = document.getElementById("ticketList");
 
+const ticketsTab = document.getElementById("ticketsTab");
+const faqTab = document.getElementById("faqTab");
+const faqList = document.getElementById("faqList");
+const faqCategory = document.getElementById("faqCategory");
+const faqQuestion = document.getElementById("faqQuestion");
+const faqAnswer = document.getElementById("faqAnswer");
+const faqKeywords = document.getElementById("faqKeywords");
+const faqAddBtn = document.getElementById("faqAddBtn");
+const faqFormError = document.getElementById("faqFormError");
+
+const CATEGORY_LABELS = {
+  wifi: "📶 와이파이",
+  leave: "🗓️ 연차 및 휴가",
+  supplies: "🖇️ 사무실 물품"
+};
+const CATEGORY_ORDER = ["wifi", "leave", "supplies"];
+
 function formatDate(iso) {
   const d = new Date(iso);
   return d.toLocaleString("ko-KR");
@@ -123,6 +140,206 @@ loginBtn.addEventListener("click", async () => {
 
 passwordInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") loginBtn.click();
+});
+
+document.querySelectorAll(".admin-tab").forEach((btn) => {
+  btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+});
+
+function switchTab(tab) {
+  document.querySelectorAll(".admin-tab").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tab === tab);
+  });
+  ticketsTab.style.display = tab === "tickets" ? "block" : "none";
+  faqTab.style.display = tab === "faq" ? "block" : "none";
+  if (tab === "faq") loadFaq();
+}
+
+function renderFaqItemCard(item) {
+  const card = document.createElement("div");
+  card.className = "faq-item-card";
+
+  const questionEl = document.createElement("div");
+  questionEl.className = "faq-item-question";
+  questionEl.textContent = item.question;
+  card.appendChild(questionEl);
+
+  const answerEl = document.createElement("div");
+  answerEl.className = "faq-item-answer";
+  answerEl.textContent = item.answer;
+  card.appendChild(answerEl);
+
+  const actions = document.createElement("div");
+  actions.className = "faq-item-actions";
+
+  const editBtn = document.createElement("button");
+  editBtn.type = "button";
+  editBtn.textContent = "수정";
+  actions.appendChild(editBtn);
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "danger";
+  deleteBtn.textContent = "삭제";
+  actions.appendChild(deleteBtn);
+
+  card.appendChild(actions);
+
+  editBtn.addEventListener("click", () => renderFaqEditForm(card, item));
+
+  deleteBtn.addEventListener("click", async () => {
+    if (!confirm("이 FAQ 항목을 삭제할까요?")) return;
+    deleteBtn.disabled = true;
+    try {
+      const res = await fetch(`/api/faq/${item.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("delete failed");
+      await loadFaq();
+    } catch (err) {
+      deleteBtn.disabled = false;
+      alert("삭제에 실패했어요. 다시 시도해주세요.");
+    }
+  });
+
+  return card;
+}
+
+function renderFaqEditForm(card, item) {
+  card.innerHTML = "";
+  card.classList.add("faq-form");
+
+  const categorySelect = document.createElement("select");
+  CATEGORY_ORDER.forEach((cat) => {
+    const opt = document.createElement("option");
+    opt.value = cat;
+    opt.textContent = CATEGORY_LABELS[cat];
+    if (cat === item.category) opt.selected = true;
+    categorySelect.appendChild(opt);
+  });
+  card.appendChild(categorySelect);
+
+  const questionInput = document.createElement("input");
+  questionInput.type = "text";
+  questionInput.value = item.question;
+  card.appendChild(questionInput);
+
+  const answerInput = document.createElement("textarea");
+  answerInput.value = item.answer;
+  card.appendChild(answerInput);
+
+  const keywordsInput = document.createElement("input");
+  keywordsInput.type = "text";
+  keywordsInput.value = item.keywords || "";
+  keywordsInput.placeholder = "검색 키워드, 쉼표로 구분";
+  card.appendChild(keywordsInput);
+
+  const errorMsg = document.createElement("div");
+  errorMsg.className = "admin-error";
+  card.appendChild(errorMsg);
+
+  const actions = document.createElement("div");
+  actions.className = "faq-item-actions";
+
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.textContent = "저장";
+  actions.appendChild(saveBtn);
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.textContent = "취소";
+  actions.appendChild(cancelBtn);
+
+  card.appendChild(actions);
+
+  cancelBtn.addEventListener("click", () => loadFaq());
+
+  saveBtn.addEventListener("click", async () => {
+    const category = categorySelect.value;
+    const question = questionInput.value.trim();
+    const answer = answerInput.value.trim();
+    const keywords = keywordsInput.value.trim();
+
+    if (!question || !answer) {
+      errorMsg.textContent = "질문과 답변을 모두 입력해주세요.";
+      return;
+    }
+
+    saveBtn.disabled = true;
+    try {
+      const res = await fetch(`/api/faq/${item.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category, question, answer, keywords })
+      });
+      if (!res.ok) throw new Error("update failed");
+      await loadFaq();
+    } catch (err) {
+      saveBtn.disabled = false;
+      errorMsg.textContent = "저장에 실패했어요. 다시 시도해주세요.";
+    }
+  });
+}
+
+function renderFaqList(items) {
+  faqList.innerHTML = "";
+
+  if (items.length === 0) {
+    faqList.innerHTML = '<div class="empty-state">등록된 FAQ가 없습니다.</div>';
+    return;
+  }
+
+  CATEGORY_ORDER.forEach((cat) => {
+    const catItems = items.filter((item) => item.category === cat);
+    if (catItems.length === 0) return;
+
+    const group = document.createElement("div");
+    group.className = "faq-category-group";
+
+    const title = document.createElement("div");
+    title.className = "faq-category-title";
+    title.textContent = CATEGORY_LABELS[cat] || cat;
+    group.appendChild(title);
+
+    catItems.forEach((item) => group.appendChild(renderFaqItemCard(item)));
+    faqList.appendChild(group);
+  });
+}
+
+async function loadFaq() {
+  const res = await fetch("/api/faq");
+  const data = await res.json();
+  renderFaqList(data.items);
+}
+
+faqAddBtn.addEventListener("click", async () => {
+  const category = faqCategory.value;
+  const question = faqQuestion.value.trim();
+  const answer = faqAnswer.value.trim();
+  const keywords = faqKeywords.value.trim();
+  faqFormError.textContent = "";
+
+  if (!question || !answer) {
+    faqFormError.textContent = "질문과 답변을 모두 입력해주세요.";
+    return;
+  }
+
+  faqAddBtn.disabled = true;
+  try {
+    const res = await fetch("/api/faq", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category, question, answer, keywords })
+    });
+    if (!res.ok) throw new Error("create failed");
+    faqQuestion.value = "";
+    faqAnswer.value = "";
+    faqKeywords.value = "";
+    await loadFaq();
+  } catch (err) {
+    faqFormError.textContent = "추가에 실패했어요. 다시 시도해주세요.";
+  } finally {
+    faqAddBtn.disabled = false;
+  }
 });
 
 loadTickets();
