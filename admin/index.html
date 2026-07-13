@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Purple Pepper Chatbot - Admin</title>
+<link rel="stylesheet" href="../style.css" />
+<link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <div class="admin-container">
+    <header class="chat-header">
+      <div class="avatar"><img src="../assets/logo.png" alt="퍼플페퍼 로고" /></div>
+      <div>
+        <div class="title">인사팀 문의 관리자</div>
+        <div class="subtitle">접수된 문의를 확인하고 답장하세요</div>
+      </div>
+    </header>
+
+    <div id="loginView" class="admin-panel">
+      <p>관리자 비밀번호를 입력해주세요.</p>
+      <input type="password" id="passwordInput" placeholder="비밀번호" />
+      <button type="button" id="loginBtn">로그인</button>
+      <div id="loginError" class="admin-error"></div>
+    </div>
+
+    <div id="dashboardView" class="admin-panel" style="display:none;">
+      <div id="ticketList"></div>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

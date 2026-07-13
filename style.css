@@ -43,8 +43,8 @@ body {
 }
 
 .avatar {
-  width: 40px;
-  height: 40px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   background: #ffffff;
   display: flex;
@@ -52,6 +52,7 @@ body {
   justify-content: center;
   font-size: 20px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .avatar img {
@@ -149,3 +150,51 @@ body {
 }
 
 .input-bar button:hover { background: var(--purple-dark); }
+
+.ticket-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 90%;
+}
+
+.ticket-form-intro {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.ticket-form input,
+.ticket-form textarea {
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  resize: none;
+}
+
+.ticket-form input:focus,
+.ticket-form textarea:focus {
+  border-color: var(--purple);
+}
+
+.ticket-form button {
+  align-self: flex-end;
+  background: var(--purple);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ticket-form button:hover { background: var(--purple-dark); }
+.ticket-form button:disabled { opacity: 0.6; cursor: default; }
+
+.ticket-form-error {
+  color: #b91c1c;
+  font-size: 12px;
+  min-height: 14px;
+}

@@ -1,51 +1,57 @@
-// 퍼플페퍼 HR 챗봇 - 답변 데이터
-// 새 질문을 추가하려면 아래 qna 배열에 { keywords, question, answer } 형태로 추가하면 됩니다.
-// keywords: 사용자가 입력할 만한 단어들 (여러 개 등록할수록 잘 알아들어요)
+// Purple Pepper Chatbot - 답변 데이터
+// 새 질문을 추가하려면 qna 배열에 { category, keywords, question, answer } 형태로 추가하면 됩니다.
+// category는 아래 categories 배열의 id 중 하나여야 카테고리 메뉴에 노출됩니다.
 const QNA_DATA = {
   companyName: "퍼플페퍼",
+  categories: [
+    { id: "wifi", label: "📶 와이파이" },
+    { id: "leave", label: "🗓️ 연차 및 휴가" },
+    { id: "supplies", label: "🖇️ 사무실 물품" },
+    { id: "contact", label: "✉️ 인사팀 문의" }
+  ],
   qna: [
     {
       id: "wifi-2f",
+      category: "wifi",
       keywords: ["2층", "와이파이", "wifi", "wi-fi", "비밀번호", "비번"],
       question: "2층 와이파이 비밀번호가 뭔가요?",
       answer: "📶 2층 와이파이\n- SSID: PurplePepper_2F\n- 비밀번호: pp2f-2024!!\n\n(관리자: data/qna.js 에서 실제 값으로 수정하세요)"
     },
     {
       id: "wifi-3f",
+      category: "wifi",
       keywords: ["3층", "와이파이", "wifi", "wi-fi", "비밀번호", "비번"],
       question: "3층 와이파이 비밀번호가 뭔가요?",
       answer: "📶 3층 와이파이\n- SSID: PurplePepper_3F\n- 비밀번호: pp3f-2024!!"
     },
     {
-      id: "annual-leave",
-      keywords: ["연차", "휴가", "월차", "신청"],
-      question: "연차는 어떻게 신청하나요?",
-      answer: "🗓️ 연차 신청 방법\n1. 사내 그룹웨어 > 근태관리 > 연차신청\n2. 사용일 최소 1일 전 신청\n3. 팀장 승인 후 자동 반영\n\n문의: 인사팀 (hr@purplepepper.com)"
+      id: "leave-accrual",
+      category: "leave",
+      keywords: ["연차", "발생", "며칠", "몇개"],
+      question: "연차는 언제, 며칠 생기나요?",
+      answer: "🗓️ 연차 발생 기준\n- 입사일 기준 1개월 만근 시 연차 1일 생성\n- 입사 1년 후 다음날 기준 연차 15일 생성 (출근율 80% 이상 시)"
     },
     {
-      id: "expense",
-      keywords: ["경비", "법인카드", "정산", "영수증"],
-      question: "경비 정산은 어떻게 하나요?",
-      answer: "💳 경비 정산\n1. 그룹웨어 > 경비관리 > 정산신청\n2. 영수증 사진 첨부 필수\n3. 매월 25일 마감\n\n문의: 재무팀 (finance@purplepepper.com)"
+      id: "leave-usage",
+      category: "leave",
+      keywords: ["연차", "휴가", "반차", "신청", "사용"],
+      question: "연차/반차는 어떻게 사용하나요?",
+      answer: "🗓️ 연차 사용 방법\n- 반차·반반차·연차 사용 가능\n- 사용 전 팀 내 사전 공유 필수\n- 연차 당겨쓰기는 불가 (팀장 승인 시 협의 가능)\n- FLEX > 휴가 메뉴에서 신청"
     },
     {
-      id: "hr-contact",
-      keywords: ["인사팀", "연락처", "담당자", "문의"],
-      question: "인사팀 연락처가 어떻게 되나요?",
-      answer: "☎️ 인사팀 연락처\n- 이메일: hr@purplepepper.com\n- 내선: 1234\n- 위치: 5층 인사팀"
+      id: "supplies-request",
+      category: "supplies",
+      keywords: ["비품", "사무용품", "신청", "물품"],
+      question: "사무용품은 어떻게 신청하나요?",
+      answer: "🖇️ 비품 신청\nFLEX > 워크플로우 > 사무용품신청서를 작성하시면 됩니다."
     },
     {
-      id: "meeting-room",
-      keywords: ["회의실", "예약"],
-      question: "회의실 예약은 어떻게 하나요?",
-      answer: "📅 회의실 예약\n그룹웨어 > 회의실예약 메뉴에서 원하는 시간대를 선택해 예약할 수 있어요."
-    },
-    {
-      id: "onboarding",
-      keywords: ["신입", "온보딩", "입사", "첫날"],
-      question: "입사 첫날 무엇을 준비해야 하나요?",
-      answer: "🎉 입사 환영합니다!\n1. 신분증 지참\n2. 5층 인사팀에서 사원증 발급\n3. IT팀에서 노트북/계정 세팅\n\n궁금한 점은 언제든 인사팀에 문의하세요."
+      id: "supplies-equipment",
+      category: "supplies",
+      keywords: ["노트북", "장비", "지급", "자산"],
+      question: "입사 시 노트북/장비는 어떻게 받나요?",
+      answer: "🖇️ 장비 지급\n입사 시 회사 자산(노트북 등) 지급 신청서를 FLEX에서 작성하시면 지급받을 수 있습니다."
     }
   ],
-  fallback: "죄송해요, 아직 그 질문에 대한 답을 몰라요. 인사팀(hr@purplepepper.com)에 직접 문의해주시겠어요? 🙏\n\n※ 관리자: data/qna.js 파일에 질문/키워드/답변을 추가하면 챗봇이 답할 수 있어요."
+  fallback: "죄송해요, 아직 그 질문에 대한 답을 몰라요. 아래 '인사팀 문의'를 통해 직접 문의해주시겠어요? 🙏\n\n※ 관리자: data/qna.js 파일에 질문/키워드/답변을 추가하면 챗봇이 답할 수 있어요."
 };

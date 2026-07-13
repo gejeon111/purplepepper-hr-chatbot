@@ -1,0 +1,9 @@
+{
+  "name": "purplepepper-hr-chatbot",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "@vercel/postgres": "^0.10.0",
+    "resend": "^4.0.1"
+  }
+}
