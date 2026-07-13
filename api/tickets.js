@@ -1,31 +1,24 @@
-const { sql } = require("@vercel/postgres");
+const { sql, ensureTables } = require("../lib/db");
 const { Resend } = require("resend");
 const { isAdmin } = require("../lib/auth");
 
 const FROM_ADDRESS = "Purple Pepper Chatbot <onboarding@resend.dev>";
 
-async function ensureTable() {
-  await sql`CREATE TABLE IF NOT EXISTS tickets (
-    id SERIAL PRIMARY KEY,
-    question TEXT NOT NULL,
-    email TEXT NOT NULL,
-    reply TEXT,
-    status TEXT DEFAULT 'open',
-    created_at TIMESTAMPTZ DEFAULT now(),
-    replied_at TIMESTAMPTZ
-  )`;
-}
-
 module.exports = async function handler(req, res) {
-  await ensureTable();
+  await ensureTables();
 
   if (req.method === "GET") {
     if (!isAdmin(req)) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
-    const { rows } = await sql`SELECT * FROM tickets ORDER BY created_at DESC`;
-    res.status(200).json({ tickets: rows });
+    const { rows: tickets } = await sql`SELECT * FROM tickets ORDER BY created_at DESC`;
+    const { rows: messages } = await sql`SELECT * FROM messages ORDER BY created_at ASC`;
+    const grouped = tickets.map((t) => ({
+      ...t,
+      messages: messages.filter((m) => m.ticket_id === t.id)
+    }));
+    res.status(200).json({ tickets: grouped });
     return;
   }
 
@@ -36,10 +29,9 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    const { rows } = await sql`
-      INSERT INTO tickets (question, email) VALUES (${question}, ${email})
-      RETURNING id
-    `;
+    const { rows } = await sql`INSERT INTO tickets (email) VALUES (${email}) RETURNING id`;
+    const ticketId = rows[0].id;
+    await sql`INSERT INTO messages (ticket_id, sender, body) VALUES (${ticketId}, 'user', ${question})`;
 
     if (process.env.RESEND_API_KEY && process.env.HR_NOTIFY_EMAIL) {
       try {
@@ -47,15 +39,15 @@ module.exports = async function handler(req, res) {
         await resend.emails.send({
           from: FROM_ADDRESS,
           to: process.env.HR_NOTIFY_EMAIL,
-          subject: "[퍼플페퍼 챗봇] 새 문의가 접수되었습니다",
-          text: `문의자: ${email}\n\n내용:\n${question}\n\n관리자 페이지에서 확인 후 답장해주세요.`
+          subject: `[퍼플페퍼 챗봇] 새 문의 (HR-${ticketId})`,
+          text: `문의자: ${email}\n문의번호: HR-${ticketId}\n\n내용:\n${question}\n\n관리자 페이지에서 확인 후 답장해주세요.`
         });
       } catch (err) {
         console.error("Failed to send notification email", err);
       }
     }
 
-    res.status(201).json({ ok: true, id: rows[0].id });
+    res.status(201).json({ ok: true, id: ticketId });
     return;
   }
 

@@ -4,6 +4,14 @@ const inputForm = document.getElementById("inputForm");
 const userInput = document.getElementById("userInput");
 
 let currentCategory = null;
+let pollingInterval = null;
+
+function stopPolling() {
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+  }
+}
 
 function addBubble(text, sender) {
   const bubble = document.createElement("div");
@@ -82,10 +90,13 @@ function renderMenu() {
   items.forEach((item) => {
     addMenuButton(item.question, () => selectQuestion(item));
   });
-  addMenuButton("◀ 메뉴로", () => {
-    currentCategory = null;
-    renderMenu();
-  });
+  addMenuButton("◀ 메뉴로", backToMenu);
+}
+
+function backToMenu() {
+  stopPolling();
+  currentCategory = null;
+  renderMenu();
 }
 
 function selectCategory(categoryId) {
@@ -94,12 +105,20 @@ function selectCategory(categoryId) {
   currentCategory = categoryId;
 
   if (categoryId === "contact") {
-    setTimeout(() => renderTicketForm(), 300);
     clearMenu();
-    addMenuButton("◀ 메뉴로", () => {
-      currentCategory = null;
-      renderMenu();
+    addMenuButton("새 문의 남기기", () => {
+      addBubble("새 문의 남기기", "user");
+      clearMenu();
+      addMenuButton("◀ 메뉴로", backToMenu);
+      setTimeout(() => renderTicketForm(), 200);
     });
+    addMenuButton("문의 확인하기", () => {
+      addBubble("문의 확인하기", "user");
+      clearMenu();
+      addMenuButton("◀ 메뉴로", backToMenu);
+      setTimeout(() => renderLookupForm(), 200);
+    });
+    addMenuButton("◀ 메뉴로", backToMenu);
     return;
   }
 
@@ -169,10 +188,11 @@ function renderTicketForm() {
         body: JSON.stringify({ email, question })
       });
       if (!res.ok) throw new Error("submit failed");
+      const data = await res.json();
 
       card.innerHTML = "";
       card.classList.remove("ticket-form");
-      card.textContent = "✅ 문의가 접수되었습니다. 답변은 입력하신 이메일로 발송됩니다.";
+      card.textContent = `✅ 문의가 접수되었습니다! 문의번호: HR-${data.id}\n나중에 '문의 확인하기'에서 이 번호와 이메일로 답변을 확인하실 수 있어요.`;
     } catch (err) {
       submitBtn.disabled = false;
       submitBtn.textContent = "문의 제출";
@@ -182,6 +202,154 @@ function renderTicketForm() {
 
   messagesEl.appendChild(card);
   messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function renderLookupForm() {
+  const card = document.createElement("div");
+  card.className = "bubble bot ticket-form";
+
+  const intro = document.createElement("div");
+  intro.className = "ticket-form-intro";
+  intro.textContent = "문의번호와 접수 시 입력한 이메일을 입력해주세요.";
+  card.appendChild(intro);
+
+  const idInput = document.createElement("input");
+  idInput.type = "text";
+  idInput.placeholder = "문의번호 (예: HR-12)";
+  card.appendChild(idInput);
+
+  const emailInput = document.createElement("input");
+  emailInput.type = "email";
+  emailInput.placeholder = "이메일 주소";
+  card.appendChild(emailInput);
+
+  const errorMsg = document.createElement("div");
+  errorMsg.className = "ticket-form-error";
+  card.appendChild(errorMsg);
+
+  const submitBtn = document.createElement("button");
+  submitBtn.type = "button";
+  submitBtn.textContent = "조회";
+  card.appendChild(submitBtn);
+
+  submitBtn.addEventListener("click", async () => {
+    const rawId = idInput.value.trim().replace(/^HR-/i, "");
+    const email = emailInput.value.trim();
+    errorMsg.textContent = "";
+
+    if (!rawId || !email) {
+      errorMsg.textContent = "문의번호와 이메일을 모두 입력해주세요.";
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "조회 중...";
+
+    try {
+      const res = await fetch(
+        `/api/tickets/lookup?id=${encodeURIComponent(rawId)}&email=${encodeURIComponent(email)}`
+      );
+      if (!res.ok) throw new Error("not found");
+      const data = await res.json();
+      card.remove();
+      renderThreadView(rawId, email, data.messages);
+    } catch (err) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "조회";
+      errorMsg.textContent = "문의를 찾을 수 없어요. 문의번호와 이메일을 확인해주세요.";
+    }
+  });
+
+  messagesEl.appendChild(card);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function renderThreadMessage(container, m) {
+  const bubble = document.createElement("div");
+  bubble.className = `thread-msg ${m.sender === "hr" ? "hr" : "user"}`;
+  bubble.textContent = m.body;
+  container.appendChild(bubble);
+}
+
+function renderThreadView(ticketId, email, initialMessages) {
+  stopPolling();
+
+  const container = document.createElement("div");
+  container.className = "bubble bot ticket-form thread-view";
+
+  const title = document.createElement("div");
+  title.className = "ticket-form-intro";
+  title.textContent = `문의번호 HR-${ticketId} 대화`;
+  container.appendChild(title);
+
+  const threadMessages = document.createElement("div");
+  threadMessages.className = "thread-messages";
+  container.appendChild(threadMessages);
+
+  const inputRow = document.createElement("div");
+  inputRow.className = "thread-input-row";
+  const msgInput = document.createElement("input");
+  msgInput.type = "text";
+  msgInput.placeholder = "추가로 남길 말을 입력하세요";
+  const sendBtn = document.createElement("button");
+  sendBtn.type = "button";
+  sendBtn.textContent = "전송";
+  inputRow.appendChild(msgInput);
+  inputRow.appendChild(sendBtn);
+  container.appendChild(inputRow);
+
+  messagesEl.appendChild(container);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  let renderedCount = 0;
+
+  function renderAll(msgs) {
+    threadMessages.innerHTML = "";
+    msgs.forEach((m) => renderThreadMessage(threadMessages, m));
+    renderedCount = msgs.length;
+    threadMessages.scrollTop = threadMessages.scrollHeight;
+  }
+
+  renderAll(initialMessages);
+
+  async function refresh() {
+    try {
+      const res = await fetch(
+        `/api/tickets/lookup?id=${encodeURIComponent(ticketId)}&email=${encodeURIComponent(email)}`
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.messages.length !== renderedCount) {
+        renderAll(data.messages);
+      }
+    } catch (err) {
+      // ignore transient polling errors
+    }
+  }
+
+  pollingInterval = setInterval(refresh, 10000);
+
+  sendBtn.addEventListener("click", async () => {
+    const message = msgInput.value.trim();
+    if (!message) return;
+    sendBtn.disabled = true;
+
+    try {
+      const res = await fetch("/api/tickets/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: ticketId, email, message })
+      });
+      if (!res.ok) throw new Error("send failed");
+      const data = await res.json();
+      renderAll(data.messages);
+      msgInput.value = "";
+    } catch (err) {
+      msgInput.placeholder = "전송 실패, 다시 시도해주세요";
+    } finally {
+      sendBtn.disabled = false;
+    }
+  });
 }
 
 renderMenu();

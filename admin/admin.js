@@ -25,64 +25,61 @@ function renderTickets(tickets) {
     const meta = document.createElement("div");
     meta.className = "ticket-meta";
     meta.innerHTML = `
-      <span>${ticket.email} · ${formatDate(ticket.created_at)}</span>
+      <span>HR-${ticket.id} · ${ticket.email} · ${formatDate(ticket.created_at)}</span>
       <span class="ticket-badge ${ticket.status}">${ticket.status === "answered" ? "답변완료" : "미답변"}</span>
     `;
     card.appendChild(meta);
 
-    const question = document.createElement("div");
-    question.className = "ticket-question";
-    question.textContent = ticket.question;
-    card.appendChild(question);
+    const thread = document.createElement("div");
+    thread.className = "admin-thread";
+    (ticket.messages || []).forEach((m) => {
+      const bubble = document.createElement("div");
+      bubble.className = `thread-msg ${m.sender === "hr" ? "hr" : "user"}`;
+      bubble.textContent = m.body;
+      thread.appendChild(bubble);
+    });
+    card.appendChild(thread);
 
-    if (ticket.status === "answered") {
-      const replyBox = document.createElement("div");
-      replyBox.className = "ticket-existing-reply";
-      replyBox.textContent = ticket.reply;
-      card.appendChild(replyBox);
-    } else {
-      const replyBox = document.createElement("div");
-      replyBox.className = "ticket-reply-box";
+    const replyBox = document.createElement("div");
+    replyBox.className = "ticket-reply-box";
 
-      const textarea = document.createElement("textarea");
-      textarea.placeholder = "답변을 입력하세요";
-      replyBox.appendChild(textarea);
+    const textarea = document.createElement("textarea");
+    textarea.placeholder = "답변을 입력하세요";
+    replyBox.appendChild(textarea);
 
-      const submitBtn = document.createElement("button");
-      submitBtn.type = "button";
-      submitBtn.textContent = "답장 보내기";
-      replyBox.appendChild(submitBtn);
+    const submitBtn = document.createElement("button");
+    submitBtn.type = "button";
+    submitBtn.textContent = "답장 보내기";
+    replyBox.appendChild(submitBtn);
 
-      const errorMsg = document.createElement("div");
-      errorMsg.className = "admin-error";
-      replyBox.appendChild(errorMsg);
+    const errorMsg = document.createElement("div");
+    errorMsg.className = "admin-error";
+    replyBox.appendChild(errorMsg);
 
-      submitBtn.addEventListener("click", async () => {
-        const reply = textarea.value.trim();
-        if (!reply) {
-          errorMsg.textContent = "답변 내용을 입력해주세요.";
-          return;
-        }
-        submitBtn.disabled = true;
-        submitBtn.textContent = "전송 중...";
-        try {
-          const res = await fetch("/api/reply", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: ticket.id, reply })
-          });
-          if (!res.ok) throw new Error("reply failed");
-          await loadTickets();
-        } catch (err) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = "답장 보내기";
-          errorMsg.textContent = "전송에 실패했어요. 다시 시도해주세요.";
-        }
-      });
+    submitBtn.addEventListener("click", async () => {
+      const reply = textarea.value.trim();
+      if (!reply) {
+        errorMsg.textContent = "답변 내용을 입력해주세요.";
+        return;
+      }
+      submitBtn.disabled = true;
+      submitBtn.textContent = "전송 중...";
+      try {
+        const res = await fetch("/api/reply", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: ticket.id, reply })
+        });
+        if (!res.ok) throw new Error("reply failed");
+        await loadTickets();
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "답장 보내기";
+        errorMsg.textContent = "전송에 실패했어요. 다시 시도해주세요.";
+      }
+    });
 
-      card.appendChild(replyBox);
-    }
-
+    card.appendChild(replyBox);
     ticketList.appendChild(card);
   });
 }
