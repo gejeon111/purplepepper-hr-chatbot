@@ -171,19 +171,30 @@ async function fetchCategories() {
   return CATEGORIES;
 }
 
-function populateFaqCategorySelect() {
-  faqCategory.innerHTML = "";
-  CATEGORIES.filter((c) => !c.is_system).forEach((cat) => {
-    const opt = document.createElement("option");
-    opt.value = cat.id;
-    opt.textContent = cat.label;
-    faqCategory.appendChild(opt);
+function getLeafCategories() {
+  const tops = CATEGORIES.filter((c) => !c.parent_id && !c.is_system).sort((a, b) => a.sort_order - b.sort_order);
+  const result = [];
+  tops.forEach((top) => {
+    const subs = CATEGORIES.filter((c) => c.parent_id === top.id).sort((a, b) => a.sort_order - b.sort_order);
+    if (subs.length === 0) {
+      result.push({ id: top.id, displayLabel: top.label });
+    } else {
+      subs.forEach((sub) => {
+        result.push({ id: sub.id, displayLabel: `${top.label} › ${sub.label}` });
+      });
+    }
   });
+  return result;
 }
 
-function categoryLabelById(id) {
-  const cat = CATEGORIES.find((c) => c.id === id);
-  return cat ? cat.label : "(알 수 없음)";
+function populateFaqCategorySelect() {
+  faqCategory.innerHTML = "";
+  getLeafCategories().forEach((entry) => {
+    const opt = document.createElement("option");
+    opt.value = entry.id;
+    opt.textContent = entry.displayLabel;
+    faqCategory.appendChild(opt);
+  });
 }
 
 function renderFaqItemCard(item) {
@@ -239,11 +250,11 @@ function renderFaqEditForm(card, item) {
   card.classList.add("faq-form");
 
   const categorySelect = document.createElement("select");
-  CATEGORIES.filter((c) => !c.is_system).forEach((cat) => {
+  getLeafCategories().forEach((entry) => {
     const opt = document.createElement("option");
-    opt.value = cat.id;
-    opt.textContent = cat.label;
-    if (cat.id === item.category_id) opt.selected = true;
+    opt.value = entry.id;
+    opt.textContent = entry.displayLabel;
+    if (entry.id === item.category_id) opt.selected = true;
     categorySelect.appendChild(opt);
   });
   card.appendChild(categorySelect);
@@ -319,8 +330,8 @@ function renderFaqList(items) {
     return;
   }
 
-  CATEGORIES.filter((c) => !c.is_system).forEach((cat) => {
-    const catItems = items.filter((item) => item.category_id === cat.id);
+  getLeafCategories().forEach((entry) => {
+    const catItems = items.filter((item) => item.category_id === entry.id);
     if (catItems.length === 0) return;
 
     const group = document.createElement("div");
@@ -328,7 +339,7 @@ function renderFaqList(items) {
 
     const title = document.createElement("div");
     title.className = "faq-category-title";
-    title.textContent = cat.label;
+    title.textContent = entry.displayLabel;
     group.appendChild(title);
 
     catItems.forEach((item) => group.appendChild(renderFaqItemCard(item)));
@@ -375,17 +386,52 @@ faqAddBtn.addEventListener("click", async () => {
   }
 });
 
-function renderCategoryRow(cat) {
+async function moveCategory(cat, direction) {
+  const siblings = CATEGORIES.filter((c) => (c.parent_id || null) === (cat.parent_id || null)).sort(
+    (a, b) => a.sort_order - b.sort_order
+  );
+  const idx = siblings.findIndex((c) => c.id === cat.id);
+  const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+  if (swapIdx < 0 || swapIdx >= siblings.length) return;
+  const other = siblings[swapIdx];
+
+  await fetch(`/api/categories/${cat.id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sortOrder: other.sort_order })
+  });
+  await fetch(`/api/categories/${other.id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sortOrder: cat.sort_order })
+  });
+  await loadCategoryManagement();
+}
+
+function renderCategoryRow(cat, depth) {
   const card = document.createElement("div");
   card.className = "faq-item-card";
+  if (depth > 0) card.style.marginLeft = "24px";
 
   const labelEl = document.createElement("div");
   labelEl.className = "faq-item-question";
-  labelEl.textContent = cat.label + (cat.is_system ? " (시스템)" : "");
+  labelEl.textContent = (depth > 0 ? "└ " : "") + cat.label + (cat.is_system ? " (시스템)" : "");
   card.appendChild(labelEl);
 
   const actions = document.createElement("div");
   actions.className = "faq-item-actions";
+
+  const upBtn = document.createElement("button");
+  upBtn.type = "button";
+  upBtn.textContent = "▲";
+  upBtn.addEventListener("click", () => moveCategory(cat, "up"));
+  actions.appendChild(upBtn);
+
+  const downBtn = document.createElement("button");
+  downBtn.type = "button";
+  downBtn.textContent = "▼";
+  downBtn.addEventListener("click", () => moveCategory(cat, "down"));
+  actions.appendChild(downBtn);
 
   const editBtn = document.createElement("button");
   editBtn.type = "button";
@@ -404,7 +450,11 @@ function renderCategoryRow(cat) {
   editBtn.addEventListener("click", () => renderCategoryEditForm(card, cat));
 
   deleteBtn.addEventListener("click", async () => {
-    if (!confirm(`"${cat.label}" 카테고리를 삭제할까요? 이 카테고리에 속한 FAQ 항목도 함께 삭제됩니다.`)) return;
+    const hasSubs = CATEGORIES.some((c) => c.parent_id === cat.id);
+    const msg = hasSubs
+      ? `"${cat.label}" 카테고리를 삭제할까요? 하위 카테고리와 그 안의 FAQ 항목도 모두 삭제됩니다.`
+      : `"${cat.label}" 카테고리를 삭제할까요? 이 카테고리에 속한 FAQ 항목도 함께 삭제됩니다.`;
+    if (!confirm(msg)) return;
     deleteBtn.disabled = true;
     try {
       const res = await fetch(`/api/categories/${cat.id}`, { method: "DELETE" });
@@ -413,6 +463,49 @@ function renderCategoryRow(cat) {
     } catch (err) {
       deleteBtn.disabled = false;
       alert("삭제에 실패했어요. 다시 시도해주세요.");
+    }
+  });
+
+  return card;
+}
+
+function renderAddSubcategoryRow(parentCat) {
+  const card = document.createElement("div");
+  card.className = "faq-form";
+  card.style.marginLeft = "24px";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = `"${parentCat.label}" 안에 하위 카테고리 추가`;
+  card.appendChild(input);
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = "하위 카테고리 추가";
+  card.appendChild(btn);
+
+  const errorMsg = document.createElement("div");
+  errorMsg.className = "admin-error";
+  card.appendChild(errorMsg);
+
+  btn.addEventListener("click", async () => {
+    const label = input.value.trim();
+    if (!label) {
+      errorMsg.textContent = "이름을 입력해주세요.";
+      return;
+    }
+    btn.disabled = true;
+    try {
+      const res = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label, parentId: parentCat.id })
+      });
+      if (!res.ok) throw new Error("create failed");
+      await loadCategoryManagement();
+    } catch (err) {
+      btn.disabled = false;
+      errorMsg.textContent = "추가에 실패했어요. 다시 시도해주세요.";
     }
   });
 
@@ -474,11 +567,19 @@ function renderCategoryEditForm(card, cat) {
 async function loadCategoryManagement() {
   await fetchCategories();
   categoryList.innerHTML = "";
-  if (CATEGORIES.length === 0) {
+  const tops = CATEGORIES.filter((c) => !c.parent_id).sort((a, b) => a.sort_order - b.sort_order);
+  if (tops.length === 0) {
     categoryList.innerHTML = '<div class="empty-state">카테고리가 없습니다.</div>';
     return;
   }
-  CATEGORIES.forEach((cat) => categoryList.appendChild(renderCategoryRow(cat)));
+  tops.forEach((top) => {
+    categoryList.appendChild(renderCategoryRow(top, 0));
+    const subs = CATEGORIES.filter((c) => c.parent_id === top.id).sort((a, b) => a.sort_order - b.sort_order);
+    subs.forEach((sub) => categoryList.appendChild(renderCategoryRow(sub, 1)));
+    if (!top.is_system) {
+      categoryList.appendChild(renderAddSubcategoryRow(top));
+    }
+  });
 }
 
 categoryAddBtn.addEventListener("click", async () => {

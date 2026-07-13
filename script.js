@@ -86,7 +86,7 @@ function addMenuButtonTo(card, label, onClick) {
 
 function showCategoryMenu() {
   const card = createMenuCard();
-  CATEGORIES.forEach((cat) => {
+  CATEGORIES.filter((cat) => !cat.parent_id).forEach((cat) => {
     addMenuButtonTo(card, cat.label, () => selectCategory(cat));
   });
 }
@@ -113,6 +113,20 @@ function selectCategory(category) {
     return;
   }
 
+  const subcategories = CATEGORIES.filter((c) => c.parent_id === category.id);
+
+  if (subcategories.length > 0) {
+    setTimeout(() => {
+      addBubble("궁금한 항목을 선택해주세요.", "bot");
+      const card = createMenuCard();
+      subcategories.forEach((sub) => {
+        addMenuButtonTo(card, sub.label, () => selectSubcategory(sub));
+      });
+      addMenuButtonTo(card, "◀ 메뉴로", backToMenu);
+    }, 300);
+    return;
+  }
+
   setTimeout(() => {
     addBubble("궁금한 항목을 선택해주세요.", "bot");
     const card = createMenuCard();
@@ -121,6 +135,44 @@ function selectCategory(category) {
       addMenuButtonTo(card, item.question, () => selectQuestion(item));
     });
     addMenuButtonTo(card, "◀ 메뉴로", backToMenu);
+  }, 300);
+}
+
+function selectSubcategory(subcategory) {
+  addBubble(subcategory.label, "user");
+  setTimeout(() => {
+    const items = QNA_DATA.qna.filter((item) => item.category_id === subcategory.id);
+    const card = document.createElement("div");
+    card.className = "bubble bot faq-list";
+
+    if (items.length === 0) {
+      card.textContent = "아직 등록된 FAQ가 없어요.";
+    } else {
+      items.forEach((item) => {
+        const entry = document.createElement("div");
+        entry.className = "faq-list-entry";
+
+        const q = document.createElement("div");
+        q.className = "faq-list-question";
+        q.textContent = item.question;
+        entry.appendChild(q);
+
+        const a = document.createElement("div");
+        a.className = "faq-list-answer";
+        a.textContent = item.answer;
+        entry.appendChild(a);
+
+        card.appendChild(entry);
+      });
+    }
+
+    messagesEl.appendChild(card);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    setTimeout(() => {
+      addBubble("다른 궁금한 점이 있으신가요?", "bot");
+      showCategoryMenu();
+    }, 300);
   }, 300);
 }
 

@@ -18,13 +18,20 @@ module.exports = async function handler(req, res) {
   const existing = existingRows[0];
 
   if (req.method === "PUT") {
-    const { label } = req.body || {};
-    if (!label || !label.trim()) {
-      res.status(400).json({ error: "label is required" });
-      return;
+    const { label, sortOrder } = req.body || {};
+
+    if (label !== undefined) {
+      if (!label.trim()) {
+        res.status(400).json({ error: "label cannot be empty" });
+        return;
+      }
+      await sql`UPDATE categories SET label = ${label.trim()} WHERE id = ${id}`;
     }
 
-    await sql`UPDATE categories SET label = ${label.trim()} WHERE id = ${id}`;
+    if (sortOrder !== undefined) {
+      await sql`UPDATE categories SET sort_order = ${sortOrder} WHERE id = ${id}`;
+    }
+
     res.status(200).json({ ok: true });
     return;
   }
@@ -33,6 +40,14 @@ module.exports = async function handler(req, res) {
     if (existing.is_system) {
       res.status(400).json({ error: "System category cannot be deleted" });
       return;
+    }
+
+    const { rows: children } = await sql`SELECT id FROM categories WHERE parent_id = ${id}`;
+    for (const child of children) {
+      await sql`DELETE FROM faq_items WHERE category_id = ${child.id}`;
+    }
+    if (children.length > 0) {
+      await sql`DELETE FROM categories WHERE parent_id = ${id}`;
     }
 
     await sql`DELETE FROM faq_items WHERE category_id = ${id}`;
