@@ -135,25 +135,52 @@ function selectQuestion(item) {
   }, 300);
 }
 
+function attachPhoneAutoFormat(inputEl) {
+  inputEl.addEventListener("input", () => {
+    const digits = inputEl.value.replace(/\D/g, "").slice(0, 11);
+    let formatted = digits;
+    if (digits.length > 3 && digits.length <= 7) {
+      formatted = `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    } else if (digits.length > 7) {
+      formatted = `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+    }
+    inputEl.value = formatted;
+  });
+}
+
+function appendBackToMenuButton() {
+  const card = createMenuCard();
+  addMenuButtonTo(card, "◀ 메뉴로", backToMenu);
+}
+
 function renderTicketForm() {
   const card = document.createElement("div");
   card.className = "bubble bot ticket-form";
 
   const intro = document.createElement("div");
   intro.className = "ticket-form-intro";
-  intro.textContent = "인사팀에 궁금한 점을 남겨주세요. 답변은 이메일로 보내드려요.";
+  intro.textContent = "인사팀에 궁금한 점을 남겨주세요.";
   card.appendChild(intro);
 
-  const emailInput = document.createElement("input");
-  emailInput.type = "email";
-  emailInput.placeholder = "답변 받으실 이메일 주소";
-  emailInput.required = true;
-  card.appendChild(emailInput);
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.placeholder = "이름";
+  card.appendChild(nameInput);
+
+  const phoneInput = document.createElement("input");
+  phoneInput.type = "tel";
+  phoneInput.placeholder = "연락처 (예: 010-1234-5678)";
+  attachPhoneAutoFormat(phoneInput);
+  card.appendChild(phoneInput);
+
+  const notifyEmailInput = document.createElement("input");
+  notifyEmailInput.type = "email";
+  notifyEmailInput.placeholder = "답변 알림받을 이메일 (선택사항)";
+  card.appendChild(notifyEmailInput);
 
   const textarea = document.createElement("textarea");
   textarea.placeholder = "문의 내용을 입력해주세요";
   textarea.rows = 3;
-  textarea.required = true;
   card.appendChild(textarea);
 
   const errorMsg = document.createElement("div");
@@ -166,12 +193,14 @@ function renderTicketForm() {
   card.appendChild(submitBtn);
 
   submitBtn.addEventListener("click", async () => {
-    const email = emailInput.value.trim();
+    const name = nameInput.value.trim();
+    const phone = phoneInput.value.trim();
+    const notifyEmail = notifyEmailInput.value.trim();
     const question = textarea.value.trim();
     errorMsg.textContent = "";
 
-    if (!email || !question) {
-      errorMsg.textContent = "이메일과 문의 내용을 모두 입력해주세요.";
+    if (!name || !phone || !question) {
+      errorMsg.textContent = "이름, 연락처, 문의 내용을 모두 입력해주세요.";
       return;
     }
 
@@ -182,14 +211,14 @@ function renderTicketForm() {
       const res = await fetch("/api/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, question })
+        body: JSON.stringify({ name, phone, notifyEmail, question })
       });
       if (!res.ok) throw new Error("submit failed");
       const data = await res.json();
 
       card.innerHTML = "";
       card.classList.remove("ticket-form");
-      card.textContent = `✅ 문의가 접수되었습니다! 문의번호: HR-${data.id}\n나중에 '문의 확인하기'에서 이 번호와 이메일로 답변을 확인하실 수 있어요.`;
+      card.textContent = `✅ 문의가 접수되었습니다! 문의번호: HR-${data.id}\n나중에 '문의 확인하기'에서 이 번호와 연락처로 답변을 확인하실 수 있어요.`;
       showCategoryMenu();
     } catch (err) {
       submitBtn.disabled = false;
@@ -200,6 +229,7 @@ function renderTicketForm() {
 
   messagesEl.appendChild(card);
   messagesEl.scrollTop = messagesEl.scrollHeight;
+  appendBackToMenuButton();
 }
 
 function renderLookupForm() {
@@ -208,7 +238,7 @@ function renderLookupForm() {
 
   const intro = document.createElement("div");
   intro.className = "ticket-form-intro";
-  intro.textContent = "문의번호와 접수 시 입력한 이메일을 입력해주세요.";
+  intro.textContent = "문의번호와 접수 시 입력한 연락처를 입력해주세요.";
   card.appendChild(intro);
 
   const idInput = document.createElement("input");
@@ -216,10 +246,11 @@ function renderLookupForm() {
   idInput.placeholder = "문의번호 (예: HR-12)";
   card.appendChild(idInput);
 
-  const emailInput = document.createElement("input");
-  emailInput.type = "email";
-  emailInput.placeholder = "이메일 주소";
-  card.appendChild(emailInput);
+  const phoneInput = document.createElement("input");
+  phoneInput.type = "tel";
+  phoneInput.placeholder = "연락처 (예: 010-1234-5678)";
+  attachPhoneAutoFormat(phoneInput);
+  card.appendChild(phoneInput);
 
   const errorMsg = document.createElement("div");
   errorMsg.className = "ticket-form-error";
@@ -232,11 +263,11 @@ function renderLookupForm() {
 
   submitBtn.addEventListener("click", async () => {
     const rawId = idInput.value.trim().replace(/^HR-/i, "");
-    const email = emailInput.value.trim();
+    const phone = phoneInput.value.trim();
     errorMsg.textContent = "";
 
-    if (!rawId || !email) {
-      errorMsg.textContent = "문의번호와 이메일을 모두 입력해주세요.";
+    if (!rawId || !phone) {
+      errorMsg.textContent = "문의번호와 연락처를 모두 입력해주세요.";
       return;
     }
 
@@ -245,21 +276,22 @@ function renderLookupForm() {
 
     try {
       const res = await fetch(
-        `/api/tickets/lookup?id=${encodeURIComponent(rawId)}&email=${encodeURIComponent(email)}`
+        `/api/tickets/lookup?id=${encodeURIComponent(rawId)}&phone=${encodeURIComponent(phone)}`
       );
       if (!res.ok) throw new Error("not found");
       const data = await res.json();
       card.remove();
-      renderThreadView(rawId, email, data.messages);
+      renderThreadView(rawId, phone, data.messages);
     } catch (err) {
       submitBtn.disabled = false;
       submitBtn.textContent = "조회";
-      errorMsg.textContent = "문의를 찾을 수 없어요. 문의번호와 이메일을 확인해주세요.";
+      errorMsg.textContent = "문의를 찾을 수 없어요. 문의번호와 연락처를 확인해주세요.";
     }
   });
 
   messagesEl.appendChild(card);
   messagesEl.scrollTop = messagesEl.scrollHeight;
+  appendBackToMenuButton();
 }
 
 function renderThreadMessage(container, m) {
@@ -269,7 +301,7 @@ function renderThreadMessage(container, m) {
   container.appendChild(bubble);
 }
 
-function renderThreadView(ticketId, email, initialMessages) {
+function renderThreadView(ticketId, phone, initialMessages) {
   stopPolling();
 
   const container = document.createElement("div");
@@ -313,7 +345,7 @@ function renderThreadView(ticketId, email, initialMessages) {
   async function refresh() {
     try {
       const res = await fetch(
-        `/api/tickets/lookup?id=${encodeURIComponent(ticketId)}&email=${encodeURIComponent(email)}`
+        `/api/tickets/lookup?id=${encodeURIComponent(ticketId)}&phone=${encodeURIComponent(phone)}`
       );
       if (!res.ok) return;
       const data = await res.json();
@@ -336,7 +368,7 @@ function renderThreadView(ticketId, email, initialMessages) {
       const res = await fetch("/api/tickets/message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: ticketId, email, message })
+        body: JSON.stringify({ id: ticketId, phone, message })
       });
       if (!res.ok) throw new Error("send failed");
       const data = await res.json();
@@ -348,6 +380,8 @@ function renderThreadView(ticketId, email, initialMessages) {
       sendBtn.disabled = false;
     }
   });
+
+  appendBackToMenuButton();
 }
 
 async function loadCategories() {

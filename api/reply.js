@@ -32,14 +32,14 @@ module.exports = async function handler(req, res) {
   await sql`INSERT INTO messages (ticket_id, sender, body) VALUES (${id}, 'hr', ${reply})`;
   await sql`UPDATE tickets SET status = 'answered' WHERE id = ${id}`;
 
-  if (process.env.RESEND_API_KEY) {
+  if (process.env.RESEND_API_KEY && tickets[0].notify_email) {
     try {
       const resend = new Resend(process.env.RESEND_API_KEY);
       await resend.emails.send({
         from: FROM_ADDRESS,
-        to: tickets[0].email,
+        to: tickets[0].notify_email,
         subject: `[퍼플페퍼 HR] 문의(HR-${id})에 답변이 도착했습니다`,
-        text: `문의하신 내용에 대한 답변이 도착했어요.\n챗봇에서 '인사팀 문의 > 문의 확인하기'를 선택하고 문의번호 HR-${id}와 이메일을 입력하면 확인하실 수 있습니다.`
+        text: `문의하신 내용에 대한 답변이 도착했어요.\n챗봇에서 '인사팀 문의 > 문의 확인하기'를 선택하고 문의번호 HR-${id}와 연락처를 입력하면 확인하실 수 있습니다.`
       });
     } catch (err) {
       console.error("Failed to send notification email", err);

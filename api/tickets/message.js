@@ -7,13 +7,13 @@ module.exports = async function handler(req, res) {
   }
   await ensureTables();
 
-  const { id, email, message } = req.body || {};
-  if (!id || !email || !message) {
-    res.status(400).json({ error: "id, email and message are required" });
+  const { id, phone, message } = req.body || {};
+  if (!id || !phone || !message) {
+    res.status(400).json({ error: "id, phone and message are required" });
     return;
   }
 
-  const { rows: tickets } = await sql`SELECT * FROM tickets WHERE id = ${id} AND email = ${email}`;
+  const { rows: tickets } = await sql`SELECT * FROM tickets WHERE id = ${id} AND phone = ${phone}`;
   if (tickets.length === 0) {
     res.status(404).json({ error: "Ticket not found" });
     return;

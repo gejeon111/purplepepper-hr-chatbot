@@ -23,13 +23,16 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const { question, email } = req.body || {};
-    if (!question || !email) {
-      res.status(400).json({ error: "question and email are required" });
+    const { question, name, phone, notifyEmail } = req.body || {};
+    if (!question || !name || !phone) {
+      res.status(400).json({ error: "question, name and phone are required" });
       return;
     }
 
-    const { rows } = await sql`INSERT INTO tickets (email) VALUES (${email}) RETURNING id`;
+    const { rows } = await sql`
+      INSERT INTO tickets (name, phone, notify_email) VALUES (${name}, ${phone}, ${notifyEmail || null})
+      RETURNING id
+    `;
     const ticketId = rows[0].id;
     await sql`INSERT INTO messages (ticket_id, sender, body) VALUES (${ticketId}, 'user', ${question})`;
 
@@ -40,7 +43,7 @@ module.exports = async function handler(req, res) {
           from: FROM_ADDRESS,
           to: process.env.HR_NOTIFY_EMAIL,
           subject: `[퍼플페퍼 챗봇] 새 문의 (HR-${ticketId})`,
-          text: `문의자: ${email}\n문의번호: HR-${ticketId}\n\n내용:\n${question}\n\n관리자 페이지에서 확인 후 답장해주세요.`
+          text: `문의자: ${name} (${phone})\n문의번호: HR-${ticketId}\n\n내용:\n${question}\n\n관리자 페이지에서 확인 후 답장해주세요.`
         });
       } catch (err) {
         console.error("Failed to send notification email", err);

@@ -41,10 +41,17 @@ function renderTickets(tickets) {
 
     const meta = document.createElement("div");
     meta.className = "ticket-meta";
-    meta.innerHTML = `
-      <span>HR-${ticket.id} · ${ticket.email} · ${formatDate(ticket.created_at)}</span>
-      <span class="ticket-badge ${ticket.status}">${ticket.status === "answered" ? "답변완료" : "미답변"}</span>
-    `;
+
+    const metaLeft = document.createElement("span");
+    const contact = ticket.name ? `${ticket.name} (${ticket.phone})` : ticket.email || "연락처 없음";
+    metaLeft.textContent = `HR-${ticket.id} · ${contact} · ${formatDate(ticket.created_at)}`;
+    meta.appendChild(metaLeft);
+
+    const badge = document.createElement("span");
+    badge.className = `ticket-badge ${ticket.status}`;
+    badge.textContent = ticket.status === "answered" ? "답변완료" : "미답변";
+    meta.appendChild(badge);
+
     card.appendChild(meta);
 
     const thread = document.createElement("div");
