@@ -5,6 +5,10 @@ const userInput = document.getElementById("userInput");
 let CATEGORIES = [];
 let pollingInterval = null;
 
+function formatTicketNo(n) {
+  return String(n).padStart(4, "0");
+}
+
 function stopPolling() {
   if (pollingInterval) {
     clearInterval(pollingInterval);
@@ -270,7 +274,7 @@ function renderTicketForm() {
 
       card.innerHTML = "";
       card.classList.remove("ticket-form");
-      card.textContent = `✅ 문의가 접수되었습니다! 문의번호: HR-${data.id}\n나중에 '문의 확인하기'에서 이 번호와 연락처로 답변을 확인하실 수 있어요.`;
+      card.textContent = `✅ 문의가 접수되었습니다! 문의번호: HR-${formatTicketNo(data.displayNo)}\n나중에 '문의 확인하기'에서 이 번호와 연락처로 답변을 확인하실 수 있어요.`;
     } catch (err) {
       submitBtn.disabled = false;
       submitBtn.textContent = "문의 제출";
@@ -296,7 +300,7 @@ function renderTicketPickerList(phone, tickets) {
   messagesEl.scrollTop = messagesEl.scrollHeight;
 
   tickets.forEach((t) => {
-    const label = `HR-${t.id} · ${formatTicketStatus(t.status)} · ${new Date(t.created_at).toLocaleDateString("ko-KR")}`;
+    const label = `HR-${formatTicketNo(t.id)} · ${formatTicketStatus(t.status)} · ${new Date(t.created_at).toLocaleDateString("ko-KR")}`;
     addMenuButtonTo(card, label, async () => {
       try {
         const res = await fetch(
@@ -323,7 +327,7 @@ function renderLookupForm() {
 
   const idInput = document.createElement("input");
   idInput.type = "text";
-  idInput.placeholder = "문의번호 (선택사항, 예: HR-12)";
+  idInput.placeholder = "문의번호 (선택사항, 예: HR-0012)";
   card.appendChild(idInput);
 
   const phoneInput = document.createElement("input");
@@ -403,7 +407,7 @@ function renderThreadView(ticketId, phone, initialMessages) {
 
   const title = document.createElement("div");
   title.className = "ticket-form-intro";
-  title.textContent = `문의번호 HR-${ticketId} 대화`;
+  title.textContent = `문의번호 HR-${formatTicketNo(ticketId)} 대화`;
   container.appendChild(title);
 
   const threadMessages = document.createElement("div");

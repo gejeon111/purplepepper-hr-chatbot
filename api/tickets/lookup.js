@@ -15,7 +15,7 @@ module.exports = async function handler(req, res) {
 
   if (!id) {
     const { rows: tickets } = await sql`
-      SELECT id, status, created_at FROM tickets WHERE phone = ${phone} ORDER BY created_at DESC
+      SELECT display_no AS id, status, created_at FROM tickets WHERE phone = ${phone} ORDER BY created_at DESC
     `;
     if (tickets.length === 0) {
       res.status(404).json({ error: "No tickets found" });
@@ -25,14 +25,15 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const { rows: tickets } = await sql`SELECT * FROM tickets WHERE id = ${id} AND phone = ${phone}`;
+  const displayNo = parseInt(id, 10);
+  const { rows: tickets } = await sql`SELECT * FROM tickets WHERE display_no = ${displayNo} AND phone = ${phone}`;
   if (tickets.length === 0) {
     res.status(404).json({ error: "Ticket not found" });
     return;
   }
 
   const { rows: messages } = await sql`
-    SELECT sender, body, created_at FROM messages WHERE ticket_id = ${id} ORDER BY created_at ASC
+    SELECT sender, body, created_at FROM messages WHERE ticket_id = ${tickets[0].id} ORDER BY created_at ASC
   `;
   res.status(200).json({ ticket: tickets[0], messages });
 };

@@ -27,6 +27,10 @@ function formatDate(iso) {
   return d.toLocaleString("ko-KR");
 }
 
+function formatTicketNo(n) {
+  return String(n).padStart(4, "0");
+}
+
 function renderTickets(tickets) {
   ticketList.innerHTML = "";
 
@@ -42,9 +46,11 @@ function renderTickets(tickets) {
     const meta = document.createElement("div");
     meta.className = "ticket-meta";
 
+    const isClosed = ticket.status === "closed";
+
     const metaLeft = document.createElement("span");
     const contact = ticket.name ? `${ticket.name} (${ticket.phone})` : ticket.email || "연락처 없음";
-    metaLeft.textContent = `HR-${ticket.id} · ${contact} · ${formatDate(ticket.created_at)}`;
+    metaLeft.textContent = `${isClosed ? "▸ " : ""}HR-${formatTicketNo(ticket.display_no)} · ${contact} · ${formatDate(ticket.created_at)}`;
     meta.appendChild(metaLeft);
 
     const statusLabels = { answered: "답변완료", closed: "종료", open: "미답변" };
@@ -55,6 +61,19 @@ function renderTickets(tickets) {
 
     card.appendChild(meta);
 
+    const body = document.createElement("div");
+    body.className = "ticket-body";
+
+    if (isClosed) {
+      meta.classList.add("collapsible");
+      body.style.display = "none";
+      meta.addEventListener("click", () => {
+        const isOpen = body.style.display !== "none";
+        body.style.display = isOpen ? "none" : "block";
+        metaLeft.textContent = `${isOpen ? "▸" : "▾"} HR-${formatTicketNo(ticket.display_no)} · ${contact} · ${formatDate(ticket.created_at)}`;
+      });
+    }
+
     const thread = document.createElement("div");
     thread.className = "admin-thread";
     (ticket.messages || []).forEach((m) => {
@@ -63,7 +82,7 @@ function renderTickets(tickets) {
       bubble.textContent = m.body;
       thread.appendChild(bubble);
     });
-    card.appendChild(thread);
+    body.appendChild(thread);
 
     const replyBox = document.createElement("div");
     replyBox.className = "ticket-reply-box";
@@ -104,7 +123,8 @@ function renderTickets(tickets) {
       }
     });
 
-    card.appendChild(replyBox);
+    body.appendChild(replyBox);
+    card.appendChild(body);
 
     const ticketActions = document.createElement("div");
     ticketActions.className = "ticket-actions";
@@ -136,7 +156,7 @@ function renderTickets(tickets) {
     deleteBtn.className = "danger";
     deleteBtn.textContent = "삭제";
     deleteBtn.addEventListener("click", async () => {
-      if (!confirm(`HR-${ticket.id} 문의를 삭제할까요? 문의자에게는 "관리자 권한으로 해당 문의가 삭제되었습니다."라고 표시됩니다.`)) return;
+      if (!confirm(`HR-${formatTicketNo(ticket.display_no)} 문의를 삭제할까요? 문의자에게는 "관리자 권한으로 해당 문의가 삭제되었습니다."라고 표시됩니다.`)) return;
       deleteBtn.disabled = true;
       try {
         const res = await fetch("/api/tickets/status", {
