@@ -330,20 +330,58 @@ function renderFaqList(items) {
     return;
   }
 
-  getLeafCategories().forEach((entry) => {
-    const catItems = items.filter((item) => item.category_id === entry.id);
-    if (catItems.length === 0) return;
+  const tops = CATEGORIES.filter((c) => !c.parent_id && !c.is_system).sort((a, b) => a.sort_order - b.sort_order);
 
-    const group = document.createElement("div");
-    group.className = "faq-category-group";
+  tops.forEach((top) => {
+    const subs = CATEGORIES.filter((c) => c.parent_id === top.id).sort((a, b) => a.sort_order - b.sort_order);
+    const leafIds = subs.length > 0 ? subs.map((s) => s.id) : [top.id];
+    const topItemCount = items.filter((item) => leafIds.includes(item.category_id)).length;
+    if (topItemCount === 0) return;
 
-    const title = document.createElement("div");
-    title.className = "faq-category-title";
-    title.textContent = entry.displayLabel;
-    group.appendChild(title);
+    const topGroup = document.createElement("div");
+    topGroup.className = "faq-top-group";
 
-    catItems.forEach((item) => group.appendChild(renderFaqItemCard(item)));
-    faqList.appendChild(group);
+    const topTitle = document.createElement("div");
+    topTitle.className = "faq-top-title";
+    topTitle.textContent = `▸ ${top.label} (${topItemCount})`;
+    topGroup.appendChild(topTitle);
+
+    const body = document.createElement("div");
+    body.className = "faq-top-body";
+    body.style.display = "none";
+
+    if (subs.length > 0) {
+      subs.forEach((sub) => {
+        const subItems = items.filter((item) => item.category_id === sub.id);
+        if (subItems.length === 0) return;
+
+        const group = document.createElement("div");
+        group.className = "faq-category-group";
+
+        const title = document.createElement("div");
+        title.className = "faq-category-title";
+        title.textContent = sub.label;
+        group.appendChild(title);
+
+        subItems.forEach((item) => group.appendChild(renderFaqItemCard(item)));
+        body.appendChild(group);
+      });
+    } else {
+      const topItems = items.filter((item) => item.category_id === top.id);
+      const group = document.createElement("div");
+      group.className = "faq-category-group";
+      topItems.forEach((item) => group.appendChild(renderFaqItemCard(item)));
+      body.appendChild(group);
+    }
+
+    topTitle.addEventListener("click", () => {
+      const isOpen = body.style.display !== "none";
+      body.style.display = isOpen ? "none" : "block";
+      topTitle.textContent = `${isOpen ? "▸" : "▾"} ${top.label} (${topItemCount})`;
+    });
+
+    topGroup.appendChild(body);
+    faqList.appendChild(topGroup);
   });
 }
 

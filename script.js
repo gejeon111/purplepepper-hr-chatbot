@@ -141,38 +141,13 @@ function selectCategory(category) {
 function selectSubcategory(subcategory) {
   addBubble(subcategory.label, "user");
   setTimeout(() => {
+    addBubble("궁금한 항목을 선택해주세요.", "bot");
+    const card = createMenuCard();
     const items = QNA_DATA.qna.filter((item) => item.category_id === subcategory.id);
-    const card = document.createElement("div");
-    card.className = "bubble bot faq-list";
-
-    if (items.length === 0) {
-      card.textContent = "아직 등록된 FAQ가 없어요.";
-    } else {
-      items.forEach((item) => {
-        const entry = document.createElement("div");
-        entry.className = "faq-list-entry";
-
-        const q = document.createElement("div");
-        q.className = "faq-list-question";
-        q.textContent = item.question;
-        entry.appendChild(q);
-
-        const a = document.createElement("div");
-        a.className = "faq-list-answer";
-        a.textContent = item.answer;
-        entry.appendChild(a);
-
-        card.appendChild(entry);
-      });
-    }
-
-    messagesEl.appendChild(card);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-
-    setTimeout(() => {
-      addBubble("다른 궁금한 점이 있으신가요?", "bot");
-      showCategoryMenu();
-    }, 300);
+    items.forEach((item) => {
+      addMenuButtonTo(card, item.question, () => selectQuestion(item));
+    });
+    addMenuButtonTo(card, "◀ 메뉴로", backToMenu);
   }, 300);
 }
 
