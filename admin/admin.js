@@ -47,9 +47,10 @@ function renderTickets(tickets) {
     metaLeft.textContent = `HR-${ticket.id} · ${contact} · ${formatDate(ticket.created_at)}`;
     meta.appendChild(metaLeft);
 
+    const statusLabels = { answered: "답변완료", closed: "종료", open: "미답변" };
     const badge = document.createElement("span");
     badge.className = `ticket-badge ${ticket.status}`;
-    badge.textContent = ticket.status === "answered" ? "답변완료" : "미답변";
+    badge.textContent = statusLabels[ticket.status] || "미답변";
     meta.appendChild(badge);
 
     card.appendChild(meta);
@@ -104,6 +105,55 @@ function renderTickets(tickets) {
     });
 
     card.appendChild(replyBox);
+
+    const ticketActions = document.createElement("div");
+    ticketActions.className = "ticket-actions";
+
+    if (ticket.status !== "closed") {
+      const closeBtn = document.createElement("button");
+      closeBtn.type = "button";
+      closeBtn.textContent = "종료 처리";
+      closeBtn.addEventListener("click", async () => {
+        closeBtn.disabled = true;
+        try {
+          const res = await fetch("/api/tickets/status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: ticket.id, action: "close" })
+          });
+          if (!res.ok) throw new Error("close failed");
+          await loadTickets();
+        } catch (err) {
+          closeBtn.disabled = false;
+          alert("종료 처리에 실패했어요. 다시 시도해주세요.");
+        }
+      });
+      ticketActions.appendChild(closeBtn);
+    }
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "danger";
+    deleteBtn.textContent = "삭제";
+    deleteBtn.addEventListener("click", async () => {
+      if (!confirm(`HR-${ticket.id} 문의를 삭제할까요? 문의자에게는 "관리자 권한으로 해당 문의가 삭제되었습니다."라고 표시됩니다.`)) return;
+      deleteBtn.disabled = true;
+      try {
+        const res = await fetch("/api/tickets/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: ticket.id, action: "delete" })
+        });
+        if (!res.ok) throw new Error("delete failed");
+        await loadTickets();
+      } catch (err) {
+        deleteBtn.disabled = false;
+        alert("삭제에 실패했어요. 다시 시도해주세요.");
+      }
+    });
+    ticketActions.appendChild(deleteBtn);
+
+    card.appendChild(ticketActions);
     ticketList.appendChild(card);
   });
 }

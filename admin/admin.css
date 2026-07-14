@@ -80,6 +80,34 @@ body {
   color: var(--purple);
 }
 
+.ticket-badge.closed {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.ticket-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ticket-actions button {
+  background: var(--purple-light);
+  color: var(--purple);
+  border: none;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ticket-actions button.danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.ticket-actions button:hover { opacity: 0.85; }
+
 .admin-thread {
   display: flex;
   flex-direction: column;

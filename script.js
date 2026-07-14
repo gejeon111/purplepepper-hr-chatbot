@@ -283,18 +283,47 @@ function renderTicketForm() {
   appendBackToMenuButton();
 }
 
+function formatTicketStatus(status) {
+  if (status === "answered") return "답변완료";
+  if (status === "closed") return "종료";
+  return "미답변";
+}
+
+function renderTicketPickerList(phone, tickets) {
+  const card = document.createElement("div");
+  card.className = "bubble bot menu-card";
+  messagesEl.appendChild(card);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  tickets.forEach((t) => {
+    const label = `HR-${t.id} · ${formatTicketStatus(t.status)} · ${new Date(t.created_at).toLocaleDateString("ko-KR")}`;
+    addMenuButtonTo(card, label, async () => {
+      try {
+        const res = await fetch(
+          `/api/tickets/lookup?id=${encodeURIComponent(t.id)}&phone=${encodeURIComponent(phone)}`
+        );
+        if (!res.ok) throw new Error("not found");
+        const data = await res.json();
+        renderThreadView(t.id, phone, data.messages);
+      } catch (err) {
+        addBubble("문의를 불러오지 못했어요. 다시 시도해주세요.", "bot");
+      }
+    });
+  });
+}
+
 function renderLookupForm() {
   const card = document.createElement("div");
   card.className = "bubble bot ticket-form";
 
   const intro = document.createElement("div");
   intro.className = "ticket-form-intro";
-  intro.textContent = "문의번호와 접수 시 입력한 연락처를 입력해주세요.";
+  intro.textContent = "접수 시 입력한 연락처를 입력해주세요. 문의번호를 알고 계시면 함께 입력하시면 더 빨리 찾을 수 있어요 (몰라도 괜찮아요).";
   card.appendChild(intro);
 
   const idInput = document.createElement("input");
   idInput.type = "text";
-  idInput.placeholder = "문의번호 (예: HR-12)";
+  idInput.placeholder = "문의번호 (선택사항, 예: HR-12)";
   card.appendChild(idInput);
 
   const phoneInput = document.createElement("input");
@@ -317,8 +346,8 @@ function renderLookupForm() {
     const phone = phoneInput.value.trim();
     errorMsg.textContent = "";
 
-    if (!rawId || !phone) {
-      errorMsg.textContent = "문의번호와 연락처를 모두 입력해주세요.";
+    if (!phone) {
+      errorMsg.textContent = "연락처를 입력해주세요.";
       return;
     }
 
@@ -326,17 +355,31 @@ function renderLookupForm() {
     submitBtn.textContent = "조회 중...";
 
     try {
-      const res = await fetch(
-        `/api/tickets/lookup?id=${encodeURIComponent(rawId)}&phone=${encodeURIComponent(phone)}`
-      );
+      const query = rawId
+        ? `id=${encodeURIComponent(rawId)}&phone=${encodeURIComponent(phone)}`
+        : `phone=${encodeURIComponent(phone)}`;
+      const res = await fetch(`/api/tickets/lookup?${query}`);
       if (!res.ok) throw new Error("not found");
       const data = await res.json();
       card.remove();
-      renderThreadView(rawId, phone, data.messages);
+
+      if (rawId) {
+        renderThreadView(rawId, phone, data.messages);
+      } else if (data.tickets.length === 1) {
+        const res2 = await fetch(
+          `/api/tickets/lookup?id=${encodeURIComponent(data.tickets[0].id)}&phone=${encodeURIComponent(phone)}`
+        );
+        const data2 = await res2.json();
+        renderThreadView(data.tickets[0].id, phone, data2.messages);
+      } else {
+        addBubble("연락처로 접수하신 문의가 여러 건 있어요. 확인할 문의를 선택해주세요.", "bot");
+        renderTicketPickerList(phone, data.tickets);
+        appendBackToMenuButton();
+      }
     } catch (err) {
       submitBtn.disabled = false;
       submitBtn.textContent = "조회";
-      errorMsg.textContent = "문의를 찾을 수 없어요. 문의번호와 연락처를 확인해주세요.";
+      errorMsg.textContent = "문의를 찾을 수 없어요. 입력하신 정보를 확인해주세요.";
     }
   });
 

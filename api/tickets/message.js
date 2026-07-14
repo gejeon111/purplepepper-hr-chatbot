@@ -19,6 +19,11 @@ module.exports = async function handler(req, res) {
     return;
   }
 
+  if (tickets[0].status === "deleted") {
+    res.status(400).json({ error: "이 문의는 삭제되어 더 이상 메시지를 남길 수 없습니다." });
+    return;
+  }
+
   await sql`INSERT INTO messages (ticket_id, sender, body) VALUES (${id}, 'user', ${message})`;
   await sql`UPDATE tickets SET status = 'open' WHERE id = ${id}`;
 

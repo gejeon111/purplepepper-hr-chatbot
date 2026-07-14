@@ -12,7 +12,7 @@ module.exports = async function handler(req, res) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
-    const { rows: tickets } = await sql`SELECT * FROM tickets ORDER BY created_at DESC`;
+    const { rows: tickets } = await sql`SELECT * FROM tickets WHERE status != 'deleted' ORDER BY created_at DESC`;
     const { rows: messages } = await sql`SELECT * FROM messages ORDER BY created_at ASC`;
     const grouped = tickets.map((t) => ({
       ...t,
