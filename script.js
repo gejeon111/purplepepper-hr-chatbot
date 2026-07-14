@@ -9,6 +9,26 @@ function formatTicketNo(n) {
   return String(n).padStart(4, "0");
 }
 
+function getSavedIdentity() {
+  try {
+    return {
+      name: localStorage.getItem("pp_name") || "",
+      phone: localStorage.getItem("pp_phone") || ""
+    };
+  } catch (e) {
+    return { name: "", phone: "" };
+  }
+}
+
+function saveIdentity(name, phone) {
+  try {
+    localStorage.setItem("pp_name", name);
+    localStorage.setItem("pp_phone", phone);
+  } catch (e) {
+    // localStorage unavailable (e.g. private browsing) - skip saving
+  }
+}
+
 function stopPolling() {
   if (pollingInterval) {
     clearInterval(pollingInterval);
@@ -184,14 +204,18 @@ function renderTicketForm() {
   intro.textContent = "인사팀에 궁금한 점을 남겨주세요.";
   card.appendChild(intro);
 
+  const saved = getSavedIdentity();
+
   const nameInput = document.createElement("input");
   nameInput.type = "text";
   nameInput.placeholder = "이름";
+  nameInput.value = saved.name;
   card.appendChild(nameInput);
 
   const phoneInput = document.createElement("input");
   phoneInput.type = "tel";
   phoneInput.placeholder = "연락처 (예: 010-1234-5678)";
+  phoneInput.value = saved.phone;
   attachPhoneAutoFormat(phoneInput);
   card.appendChild(phoneInput);
 
@@ -271,10 +295,11 @@ function renderTicketForm() {
       });
       if (!res.ok) throw new Error("submit failed");
       const data = await res.json();
+      saveIdentity(name, phone);
 
       card.innerHTML = "";
       card.classList.remove("ticket-form");
-      card.textContent = `✅ 문의가 접수되었습니다! 문의번호: HR-${formatTicketNo(data.displayNo)}\n나중에 '문의 확인하기'에서 이 번호와 연락처로 답변을 확인하실 수 있어요.`;
+      card.textContent = `✅ 문의가 접수되었습니다! 문의번호: HR-${formatTicketNo(data.displayNo)}\n나중에 '문의 확인하기'에서 이름과 연락처로 답변을 확인하실 수 있어요.`;
     } catch (err) {
       submitBtn.disabled = false;
       submitBtn.textContent = "문의 제출";
@@ -325,14 +350,18 @@ function renderLookupForm() {
   intro.textContent = "문의 접수 시 입력한 이름과 연락처를 입력해주세요.";
   card.appendChild(intro);
 
+  const savedLookup = getSavedIdentity();
+
   const nameInput = document.createElement("input");
   nameInput.type = "text";
   nameInput.placeholder = "이름";
+  nameInput.value = savedLookup.name;
   card.appendChild(nameInput);
 
   const phoneInput = document.createElement("input");
   phoneInput.type = "tel";
   phoneInput.placeholder = "연락처 (예: 010-1234-5678)";
+  phoneInput.value = savedLookup.phone;
   attachPhoneAutoFormat(phoneInput);
   card.appendChild(phoneInput);
 
@@ -365,6 +394,7 @@ function renderLookupForm() {
       if (!res.ok) throw new Error("not found");
       const data = await res.json();
       card.remove();
+      saveIdentity(name, phone);
 
       if (data.tickets.length === 1) {
         const res2 = await fetch(
@@ -452,7 +482,7 @@ function renderThreadView(ticketId, phone, initialMessages) {
     }
   }
 
-  pollingInterval = setInterval(refresh, 10000);
+  pollingInterval = setInterval(refresh, 3000);
 
   sendBtn.addEventListener("click", async () => {
     const message = msgInput.value.trim();
