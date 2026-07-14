@@ -297,9 +297,11 @@ function renderTicketForm() {
       const data = await res.json();
       saveIdentity(name, phone);
 
-      card.innerHTML = "";
-      card.classList.remove("ticket-form");
-      card.textContent = `✅ 문의가 접수되었습니다! 문의번호: HR-${formatTicketNo(data.displayNo)}\n나중에 '문의 확인하기'에서 이름과 연락처로 답변을 확인하실 수 있어요.`;
+      card.remove();
+      addBubble(`✅ 문의가 접수되었습니다! 문의번호: HR-${formatTicketNo(data.displayNo)}`, "bot");
+      renderThreadView(data.displayNo, phone, [
+        { sender: "user", body: question, created_at: new Date().toISOString() }
+      ]);
     } catch (err) {
       submitBtn.disabled = false;
       submitBtn.textContent = "문의 제출";
