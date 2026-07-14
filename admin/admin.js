@@ -171,25 +171,22 @@ async function fetchCategories() {
   return CATEGORIES;
 }
 
-function getLeafCategories() {
+function getAssignableCategories() {
   const tops = CATEGORIES.filter((c) => !c.parent_id && !c.is_system).sort((a, b) => a.sort_order - b.sort_order);
   const result = [];
   tops.forEach((top) => {
+    result.push({ id: top.id, displayLabel: top.label });
     const subs = CATEGORIES.filter((c) => c.parent_id === top.id).sort((a, b) => a.sort_order - b.sort_order);
-    if (subs.length === 0) {
-      result.push({ id: top.id, displayLabel: top.label });
-    } else {
-      subs.forEach((sub) => {
-        result.push({ id: sub.id, displayLabel: `${top.label} › ${sub.label}` });
-      });
-    }
+    subs.forEach((sub) => {
+      result.push({ id: sub.id, displayLabel: `${top.label} › ${sub.label}` });
+    });
   });
   return result;
 }
 
 function populateFaqCategorySelect() {
   faqCategory.innerHTML = "";
-  getLeafCategories().forEach((entry) => {
+  getAssignableCategories().forEach((entry) => {
     const opt = document.createElement("option");
     opt.value = entry.id;
     opt.textContent = entry.displayLabel;
@@ -250,7 +247,7 @@ function renderFaqEditForm(card, item) {
   card.classList.add("faq-form");
 
   const categorySelect = document.createElement("select");
-  getLeafCategories().forEach((entry) => {
+  getAssignableCategories().forEach((entry) => {
     const opt = document.createElement("option");
     opt.value = entry.id;
     opt.textContent = entry.displayLabel;
@@ -334,8 +331,11 @@ function renderFaqList(items) {
 
   tops.forEach((top) => {
     const subs = CATEGORIES.filter((c) => c.parent_id === top.id).sort((a, b) => a.sort_order - b.sort_order);
-    const leafIds = subs.length > 0 ? subs.map((s) => s.id) : [top.id];
-    const topItemCount = items.filter((item) => leafIds.includes(item.category_id)).length;
+    const directItems = items.filter((item) => item.category_id === top.id);
+    const subGroups = subs
+      .map((sub) => ({ sub, subItems: items.filter((item) => item.category_id === sub.id) }))
+      .filter((g) => g.subItems.length > 0);
+    const topItemCount = directItems.length + subGroups.reduce((sum, g) => sum + g.subItems.length, 0);
     if (topItemCount === 0) return;
 
     const topGroup = document.createElement("div");
@@ -350,29 +350,25 @@ function renderFaqList(items) {
     body.className = "faq-top-body";
     body.style.display = "none";
 
-    if (subs.length > 0) {
-      subs.forEach((sub) => {
-        const subItems = items.filter((item) => item.category_id === sub.id);
-        if (subItems.length === 0) return;
-
-        const group = document.createElement("div");
-        group.className = "faq-category-group";
-
-        const title = document.createElement("div");
-        title.className = "faq-category-title";
-        title.textContent = sub.label;
-        group.appendChild(title);
-
-        subItems.forEach((item) => group.appendChild(renderFaqItemCard(item)));
-        body.appendChild(group);
-      });
-    } else {
-      const topItems = items.filter((item) => item.category_id === top.id);
+    if (directItems.length > 0) {
       const group = document.createElement("div");
       group.className = "faq-category-group";
-      topItems.forEach((item) => group.appendChild(renderFaqItemCard(item)));
+      directItems.forEach((item) => group.appendChild(renderFaqItemCard(item)));
       body.appendChild(group);
     }
+
+    subGroups.forEach(({ sub, subItems }) => {
+      const group = document.createElement("div");
+      group.className = "faq-category-group";
+
+      const title = document.createElement("div");
+      title.className = "faq-category-title";
+      title.textContent = sub.label;
+      group.appendChild(title);
+
+      subItems.forEach((item) => group.appendChild(renderFaqItemCard(item)));
+      body.appendChild(group);
+    });
 
     topTitle.addEventListener("click", () => {
       const isOpen = body.style.display !== "none";

@@ -114,24 +114,15 @@ function selectCategory(category) {
   }
 
   const subcategories = CATEGORIES.filter((c) => c.parent_id === category.id);
-
-  if (subcategories.length > 0) {
-    setTimeout(() => {
-      addBubble("궁금한 항목을 선택해주세요.", "bot");
-      const card = createMenuCard();
-      subcategories.forEach((sub) => {
-        addMenuButtonTo(card, sub.label, () => selectSubcategory(sub));
-      });
-      addMenuButtonTo(card, "◀ 메뉴로", backToMenu);
-    }, 300);
-    return;
-  }
+  const directItems = QNA_DATA.qna.filter((item) => item.category_id === category.id);
 
   setTimeout(() => {
     addBubble("궁금한 항목을 선택해주세요.", "bot");
     const card = createMenuCard();
-    const items = QNA_DATA.qna.filter((item) => item.category_id === category.id);
-    items.forEach((item) => {
+    subcategories.forEach((sub) => {
+      addMenuButtonTo(card, sub.label, () => selectSubcategory(sub));
+    });
+    directItems.forEach((item) => {
       addMenuButtonTo(card, item.question, () => selectQuestion(item));
     });
     addMenuButtonTo(card, "◀ 메뉴로", backToMenu);
