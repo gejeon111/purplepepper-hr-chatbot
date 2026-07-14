@@ -193,13 +193,42 @@ function renderTicketForm() {
 
   const notifyEmailInput = document.createElement("input");
   notifyEmailInput.type = "email";
-  notifyEmailInput.placeholder = "답변 알림받을 이메일 (선택사항)";
+  notifyEmailInput.placeholder = "이메일 (선택사항)";
   card.appendChild(notifyEmailInput);
+
+  const notifyNotice = document.createElement("div");
+  notifyNotice.className = "ticket-form-notice";
+  notifyNotice.textContent =
+    "※ 이메일을 남기셔도 답변 도착 알림은 현재 발송되지 않아요. 답변은 '문의 확인하기'에서 문의번호와 연락처로 직접 확인해주세요.";
+  card.appendChild(notifyNotice);
 
   const textarea = document.createElement("textarea");
   textarea.placeholder = "문의 내용을 입력해주세요";
   textarea.rows = 3;
   card.appendChild(textarea);
+
+  const consentBox = document.createElement("div");
+  consentBox.className = "consent-box";
+
+  const consentText = document.createElement("div");
+  consentText.className = "consent-text";
+  consentText.textContent =
+    "[개인정보 수집·이용 안내]\n" +
+    "- 수집 항목: 이름, 연락처, 이메일(선택), 문의 내용\n" +
+    "- 수집 목적: 문의 접수 및 답변 제공\n" +
+    "- 보유 기간: 문의 처리 완료 후 파기\n" +
+    "동의를 거부하실 수 있으며, 거부 시 문의 접수가 제한됩니다.";
+  consentBox.appendChild(consentText);
+
+  const consentLabel = document.createElement("label");
+  consentLabel.className = "consent-label";
+  const consentCheckbox = document.createElement("input");
+  consentCheckbox.type = "checkbox";
+  consentLabel.appendChild(consentCheckbox);
+  consentLabel.append(" 개인정보 수집 및 이용에 동의합니다 (필수)");
+  consentBox.appendChild(consentLabel);
+
+  card.appendChild(consentBox);
 
   const errorMsg = document.createElement("div");
   errorMsg.className = "ticket-form-error";
@@ -222,6 +251,11 @@ function renderTicketForm() {
       return;
     }
 
+    if (!consentCheckbox.checked) {
+      errorMsg.textContent = "개인정보 수집 및 이용에 동의해주셔야 문의를 접수할 수 있어요.";
+      return;
+    }
+
     submitBtn.disabled = true;
     submitBtn.textContent = "제출 중...";
 
@@ -237,7 +271,6 @@ function renderTicketForm() {
       card.innerHTML = "";
       card.classList.remove("ticket-form");
       card.textContent = `✅ 문의가 접수되었습니다! 문의번호: HR-${data.id}\n나중에 '문의 확인하기'에서 이 번호와 연락처로 답변을 확인하실 수 있어요.`;
-      showCategoryMenu();
     } catch (err) {
       submitBtn.disabled = false;
       submitBtn.textContent = "문의 제출";
