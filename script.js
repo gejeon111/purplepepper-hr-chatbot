@@ -207,9 +207,15 @@ function renderTicketForm() {
   card.appendChild(notifyEmailInput);
 
   const textarea = document.createElement("textarea");
-  textarea.placeholder = "문의 내용을 입력해주세요.\n답변은 남겨주신 연락처 또는 이메일로 인사팀이 직접 안내드려요.";
-  textarea.rows = 3;
+  textarea.className = "ticket-question-textarea";
+  textarea.placeholder = "문의 내용을 입력해주세요.";
+  textarea.rows = 6;
   card.appendChild(textarea);
+
+  const textareaHint = document.createElement("div");
+  textareaHint.className = "textarea-hint";
+  textareaHint.textContent = "답변은 남겨주신 연락처 또는 이메일로 인사팀이 직접 안내드려요.";
+  card.appendChild(textareaHint);
 
   const contactMethodGroup = document.createElement("div");
   contactMethodGroup.className = "contact-method-group";
