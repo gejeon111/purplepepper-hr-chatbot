@@ -23,18 +23,21 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const { question, name, phone, notifyEmail } = req.body || {};
-    if (!question || !name || !phone) {
-      res.status(400).json({ error: "question, name and phone are required" });
+    const { question, name, phone, notifyEmail, contactMethods } = req.body || {};
+    if (!question || !name || !phone || !notifyEmail) {
+      res.status(400).json({ error: "question, name, phone and notifyEmail are required" });
       return;
     }
+
+    const contactMethodsText = Array.isArray(contactMethods) ? contactMethods.join(", ") : "";
 
     const { rows: seqRows } = await sql`SELECT nextval('ticket_display_no_seq') AS n`;
     const displayNo = Number(seqRows[0].n);
     const displayLabel = String(displayNo).padStart(4, "0");
 
     const { rows } = await sql`
-      INSERT INTO tickets (name, phone, notify_email, display_no) VALUES (${name}, ${phone}, ${notifyEmail || null}, ${displayNo})
+      INSERT INTO tickets (name, phone, notify_email, contact_methods, display_no)
+      VALUES (${name}, ${phone}, ${notifyEmail}, ${contactMethodsText}, ${displayNo})
       RETURNING id
     `;
     const ticketId = rows[0].id;
@@ -43,11 +46,12 @@ module.exports = async function handler(req, res) {
     if (process.env.RESEND_API_KEY && process.env.HR_NOTIFY_EMAIL) {
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
+        const contactLine = contactMethodsText ? `\n선호 답변 방법: ${contactMethodsText}` : "";
         await resend.emails.send({
           from: FROM_ADDRESS,
           to: process.env.HR_NOTIFY_EMAIL,
           subject: `[퍼플페퍼 챗봇] 새 문의 (HR-${displayLabel})`,
-          text: `문의자: ${name} (${phone})\n문의번호: HR-${displayLabel}\n\n내용:\n${question}\n\n관리자 페이지에서 확인 후 답장해주세요.`
+          text: `문의자: ${name} (${phone}, ${notifyEmail})${contactLine}\n문의번호: HR-${displayLabel}\n\n내용:\n${question}\n\n관리자 페이지에서 확인 후 답장해주세요.`
         });
       } catch (err) {
         console.error("Failed to send notification email", err);

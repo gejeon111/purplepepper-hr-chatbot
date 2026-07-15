@@ -203,18 +203,36 @@ function renderTicketForm() {
 
   const notifyEmailInput = document.createElement("input");
   notifyEmailInput.type = "email";
-  notifyEmailInput.placeholder = "이메일 (선택사항)";
+  notifyEmailInput.placeholder = "이메일";
   card.appendChild(notifyEmailInput);
 
-  const notifyNotice = document.createElement("div");
-  notifyNotice.className = "ticket-form-notice";
-  notifyNotice.textContent = "※ 답변은 남겨주신 연락처(카카오톡) 또는 이메일로 인사팀이 직접 안내드려요.";
-  card.appendChild(notifyNotice);
-
   const textarea = document.createElement("textarea");
-  textarea.placeholder = "문의 내용을 입력해주세요";
+  textarea.placeholder = "문의 내용을 입력해주세요. 답변은 남겨주신 연락처 또는 이메일로 인사팀이 직접 안내드려요.";
   textarea.rows = 3;
   card.appendChild(textarea);
+
+  const contactMethodGroup = document.createElement("div");
+  contactMethodGroup.className = "contact-method-group";
+
+  const contactMethodLabel = document.createElement("div");
+  contactMethodLabel.className = "contact-method-label";
+  contactMethodLabel.textContent = "답변 받고 싶은 방법을 선택해주세요 (선택사항)";
+  contactMethodGroup.appendChild(contactMethodLabel);
+
+  const contactMethodOptions = ["문자", "카카오톡", "전화", "메일"];
+  const contactMethodCheckboxes = contactMethodOptions.map((option) => {
+    const label = document.createElement("label");
+    label.className = "contact-method-option";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = option;
+    label.appendChild(checkbox);
+    label.append(` ${option}`);
+    contactMethodGroup.appendChild(label);
+    return checkbox;
+  });
+
+  card.appendChild(contactMethodGroup);
 
   const consentBox = document.createElement("div");
   consentBox.className = "consent-box";
@@ -223,7 +241,7 @@ function renderTicketForm() {
   consentText.className = "consent-text";
   consentText.textContent =
     "[개인정보 수집·이용 안내]\n" +
-    "- 수집 항목: 이름, 연락처, 이메일(선택), 문의 내용\n" +
+    "- 수집 항목: 이름, 연락처, 이메일, 문의 내용, 선호 답변 방법(선택)\n" +
     "- 수집 목적: 문의 접수 및 답변 제공\n" +
     "- 보유 기간: 문의 처리 완료 후 파기\n" +
     "동의를 거부하실 수 있으며, 거부 시 문의 접수가 제한됩니다.";
@@ -253,10 +271,13 @@ function renderTicketForm() {
     const phone = phoneInput.value.trim();
     const notifyEmail = notifyEmailInput.value.trim();
     const question = textarea.value.trim();
+    const contactMethods = contactMethodCheckboxes
+      .filter((cb) => cb.checked)
+      .map((cb) => cb.value);
     errorMsg.textContent = "";
 
-    if (!name || !phone || !question) {
-      errorMsg.textContent = "이름, 연락처, 문의 내용을 모두 입력해주세요.";
+    if (!name || !phone || !notifyEmail || !question) {
+      errorMsg.textContent = "이름, 연락처, 이메일, 문의 내용을 모두 입력해주세요.";
       return;
     }
 
@@ -272,7 +293,7 @@ function renderTicketForm() {
       const res = await fetch("/api/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone, notifyEmail, question })
+        body: JSON.stringify({ name, phone, notifyEmail, question, contactMethods })
       });
       if (!res.ok) throw new Error("submit failed");
       const data = await res.json();

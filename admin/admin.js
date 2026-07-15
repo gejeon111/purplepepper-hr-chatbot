@@ -49,8 +49,13 @@ function renderTickets(tickets) {
     const isClosed = ticket.status === "closed";
 
     const metaLeft = document.createElement("span");
-    const contact = ticket.name ? `${ticket.name} (${ticket.phone})` : ticket.email || "연락처 없음";
-    metaLeft.textContent = `${isClosed ? "▸ " : ""}HR-${formatTicketNo(ticket.display_no)} · ${contact} · ${formatDate(ticket.created_at)}`;
+    const contactParts = [];
+    if (ticket.name) contactParts.push(ticket.name);
+    if (ticket.phone) contactParts.push(ticket.phone);
+    if (ticket.notify_email) contactParts.push(ticket.notify_email);
+    const contact = contactParts.length > 0 ? contactParts.join(" / ") : ticket.email || "연락처 없음";
+    const preferred = ticket.contact_methods ? ` · 선호: ${ticket.contact_methods}` : "";
+    metaLeft.textContent = `${isClosed ? "▸ " : ""}HR-${formatTicketNo(ticket.display_no)} · ${contact}${preferred} · ${formatDate(ticket.created_at)}`;
     meta.appendChild(metaLeft);
 
     const metaRight = document.createElement("span");
