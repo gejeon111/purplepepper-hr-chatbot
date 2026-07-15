@@ -212,11 +212,6 @@ function renderTicketForm() {
   textarea.rows = 6;
   card.appendChild(textarea);
 
-  const textareaHint = document.createElement("div");
-  textareaHint.className = "textarea-hint";
-  textareaHint.textContent = "답변은 남겨주신 연락처 또는 이메일로 인사팀이 직접 안내드려요.";
-  card.appendChild(textareaHint);
-
   const contactMethodGroup = document.createElement("div");
   contactMethodGroup.className = "contact-method-group";
 
