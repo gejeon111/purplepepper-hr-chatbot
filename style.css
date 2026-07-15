@@ -231,19 +231,6 @@ body {
   min-height: 14px;
 }
 
-.thread-view {
-  width: 100%;
-}
-
-.thread-messages {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 220px;
-  overflow-y: auto;
-  padding: 4px 0;
-}
-
 .thread-msg {
   max-width: 85%;
   padding: 8px 12px;
@@ -262,11 +249,4 @@ body {
   align-self: flex-start;
   background: var(--bg);
   color: var(--text);
-}
-
-.thread-msg.waiting {
-  font-style: italic;
-  color: #9ca3af;
-  background: transparent;
-  border: 1px dashed #e5e7eb;
 }

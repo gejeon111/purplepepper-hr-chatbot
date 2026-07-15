@@ -3,7 +3,6 @@ const inputForm = document.getElementById("inputForm");
 const userInput = document.getElementById("userInput");
 
 let CATEGORIES = [];
-let pollingInterval = null;
 
 function formatTicketNo(n) {
   return String(n).padStart(4, "0");
@@ -26,13 +25,6 @@ function saveIdentity(name, phone) {
     localStorage.setItem("pp_phone", phone);
   } catch (e) {
     // localStorage unavailable (e.g. private browsing) - skip saving
-  }
-}
-
-function stopPolling() {
-  if (pollingInterval) {
-    clearInterval(pollingInterval);
-    pollingInterval = null;
   }
 }
 
@@ -116,7 +108,6 @@ function showCategoryMenu() {
 }
 
 function backToMenu() {
-  stopPolling();
   showCategoryMenu();
 }
 
@@ -124,12 +115,7 @@ function selectCategory(category) {
   addBubble(category.label, "user");
 
   if (category.is_system) {
-    const card = createMenuCard();
-    addMenuButtonTo(card, "새 문의 남기기", () => {
-      addBubble("새 문의 남기기", "user");
-      setTimeout(() => renderTicketForm(), 200);
-    });
-    addMenuButtonTo(card, "◀ 메뉴로", backToMenu);
+    setTimeout(() => renderTicketForm(), 200);
     return;
   }
 
@@ -222,8 +208,7 @@ function renderTicketForm() {
 
   const notifyNotice = document.createElement("div");
   notifyNotice.className = "ticket-form-notice";
-  notifyNotice.textContent =
-    "※ 이메일을 남기셔도 답변 도착 알림은 현재 발송되지 않아요. 문의 제출 후 이 창에서 바로 답변을 확인하실 수 있어요.";
+  notifyNotice.textContent = "※ 답변은 남겨주신 연락처(카카오톡) 또는 이메일로 인사팀이 직접 안내드려요.";
   card.appendChild(notifyNotice);
 
   const textarea = document.createElement("textarea");
@@ -293,11 +278,9 @@ function renderTicketForm() {
       const data = await res.json();
       saveIdentity(name, phone);
 
-      card.remove();
-      addBubble(`✅ 문의가 접수되었습니다! 문의번호: HR-${formatTicketNo(data.displayNo)}`, "bot");
-      renderThreadView(data.displayNo, phone, [
-        { sender: "user", body: question, created_at: new Date().toISOString() }
-      ]);
+      card.innerHTML = "";
+      card.classList.remove("ticket-form");
+      card.textContent = `✅ 문의가 접수되었습니다! 문의번호: HR-${formatTicketNo(data.displayNo)}\n인사팀이 확인 후 카카오톡 또는 이메일로 연락드릴게요.`;
     } catch (err) {
       submitBtn.disabled = false;
       submitBtn.textContent = "문의 제출";
@@ -307,68 +290,6 @@ function renderTicketForm() {
 
   messagesEl.appendChild(card);
   messagesEl.scrollTop = messagesEl.scrollHeight;
-  appendBackToMenuButton();
-}
-
-function renderThreadMessage(container, m) {
-  const bubble = document.createElement("div");
-  bubble.className = `thread-msg ${m.sender === "hr" ? "hr" : "user"}`;
-  bubble.textContent = m.body;
-  container.appendChild(bubble);
-}
-
-function renderThreadView(ticketId, phone, initialMessages) {
-  stopPolling();
-
-  const container = document.createElement("div");
-  container.className = "bubble bot ticket-form thread-view";
-
-  const title = document.createElement("div");
-  title.className = "ticket-form-intro";
-  title.textContent = `문의번호 HR-${formatTicketNo(ticketId)} 확인`;
-  container.appendChild(title);
-
-  const threadMessages = document.createElement("div");
-  threadMessages.className = "thread-messages";
-  container.appendChild(threadMessages);
-
-  messagesEl.appendChild(container);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-
-  let renderedCount = 0;
-
-  function renderAll(msgs) {
-    threadMessages.innerHTML = "";
-    msgs.forEach((m) => renderThreadMessage(threadMessages, m));
-    if (!msgs.some((m) => m.sender === "hr")) {
-      const waiting = document.createElement("div");
-      waiting.className = "thread-msg hr waiting";
-      waiting.textContent = "아직 답변 전이에요. 답변이 등록되면 자동으로 여기에 표시돼요.";
-      threadMessages.appendChild(waiting);
-    }
-    renderedCount = msgs.length;
-    threadMessages.scrollTop = threadMessages.scrollHeight;
-  }
-
-  renderAll(initialMessages);
-
-  async function refresh() {
-    try {
-      const res = await fetch(
-        `/api/tickets/lookup?id=${encodeURIComponent(ticketId)}&phone=${encodeURIComponent(phone)}`
-      );
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.messages.length !== renderedCount) {
-        renderAll(data.messages);
-      }
-    } catch (err) {
-      // ignore transient polling errors
-    }
-  }
-
-  pollingInterval = setInterval(refresh, 3000);
-
   appendBackToMenuButton();
 }
 
