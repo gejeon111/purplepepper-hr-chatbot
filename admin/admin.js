@@ -138,47 +138,6 @@ function renderTickets(tickets) {
       thread.appendChild(bubble);
     });
     body.appendChild(thread);
-
-    const replyBox = document.createElement("div");
-    replyBox.className = "ticket-reply-box";
-
-    const textarea = document.createElement("textarea");
-    textarea.placeholder = "답변을 입력하세요";
-    replyBox.appendChild(textarea);
-
-    const submitBtn = document.createElement("button");
-    submitBtn.type = "button";
-    submitBtn.textContent = "답장 보내기";
-    replyBox.appendChild(submitBtn);
-
-    const errorMsg = document.createElement("div");
-    errorMsg.className = "admin-error";
-    replyBox.appendChild(errorMsg);
-
-    submitBtn.addEventListener("click", async () => {
-      const reply = textarea.value.trim();
-      if (!reply) {
-        errorMsg.textContent = "답변 내용을 입력해주세요.";
-        return;
-      }
-      submitBtn.disabled = true;
-      submitBtn.textContent = "전송 중...";
-      try {
-        const res = await fetch("/api/reply", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: ticket.id, reply })
-        });
-        if (!res.ok) throw new Error("reply failed");
-        await loadTickets();
-      } catch (err) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = "답장 보내기";
-        errorMsg.textContent = "전송에 실패했어요. 다시 시도해주세요.";
-      }
-    });
-
-    body.appendChild(replyBox);
     card.appendChild(body);
 
     ticketList.appendChild(card);

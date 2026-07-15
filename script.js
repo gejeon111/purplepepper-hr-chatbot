@@ -325,9 +325,12 @@ function renderTicketForm() {
       const data = await res.json();
       saveIdentity(name, phone);
 
-      card.innerHTML = "";
-      card.classList.remove("ticket-form");
-      card.textContent = `✅ 문의가 접수되었습니다! 문의번호: HR-${formatTicketNo(data.displayNo)}\n인사팀이 확인 후 카카오톡 또는 이메일로 연락드릴게요.`;
+      card.remove();
+      addBubble(question, "user");
+      addBubble(
+        `✅ 문의가 접수되었습니다! 문의번호: HR-${formatTicketNo(data.displayNo)}\n인사팀이 확인 후 카카오톡 또는 이메일로 연락드릴게요.`,
+        "bot"
+      );
     } catch (err) {
       submitBtn.disabled = false;
       submitBtn.textContent = "문의 제출";

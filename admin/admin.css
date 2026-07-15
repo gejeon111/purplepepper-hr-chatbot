@@ -131,33 +131,6 @@ body {
   max-width: 100%;
 }
 
-.ticket-reply-box textarea {
-  width: 100%;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  padding: 6px 8px;
-  font-size: 12px;
-  font-family: inherit;
-  resize: vertical;
-  min-height: 36px;
-  outline: none;
-}
-
-.ticket-reply-box textarea:focus { border-color: var(--purple); }
-
-.ticket-reply-box button {
-  margin-top: 4px;
-  background: var(--purple);
-  color: #fff;
-  border: none;
-  border-radius: 999px;
-  padding: 5px 14px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.ticket-reply-box button:hover { background: var(--purple-dark); }
-
 .empty-state {
   text-align: center;
   color: #6b7280;
