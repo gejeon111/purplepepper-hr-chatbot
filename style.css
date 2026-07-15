@@ -117,8 +117,7 @@ body {
   cursor: pointer;
 }
 
-.menu-btn:hover:not(:disabled) { background: #e0d5fb; }
-.menu-btn:disabled { opacity: 0.5; cursor: default; }
+.menu-btn:hover { background: #e0d5fb; }
 
 .input-bar {
   display: flex;

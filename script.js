@@ -91,9 +91,7 @@ function addMenuButtonTo(card, label, onClick) {
   btn.className = "menu-btn";
   btn.textContent = label;
   btn.addEventListener("click", () => {
-    card.querySelectorAll("button").forEach((b) => {
-      b.disabled = true;
-    });
+    card.remove();
     onClick();
   });
   card.appendChild(btn);
