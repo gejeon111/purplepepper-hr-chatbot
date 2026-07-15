@@ -129,10 +129,6 @@ function selectCategory(category) {
       addBubble("새 문의 남기기", "user");
       setTimeout(() => renderTicketForm(), 200);
     });
-    addMenuButtonTo(card, "문의 확인하기", () => {
-      addBubble("문의 확인하기", "user");
-      setTimeout(() => renderLookupForm(), 200);
-    });
     addMenuButtonTo(card, "◀ 메뉴로", backToMenu);
     return;
   }
@@ -227,7 +223,7 @@ function renderTicketForm() {
   const notifyNotice = document.createElement("div");
   notifyNotice.className = "ticket-form-notice";
   notifyNotice.textContent =
-    "※ 이메일을 남기셔도 답변 도착 알림은 현재 발송되지 않아요. 답변은 '문의 확인하기'에서 문의번호와 연락처로 직접 확인해주세요.";
+    "※ 이메일을 남기셔도 답변 도착 알림은 현재 발송되지 않아요. 문의 제출 후 이 창에서 바로 답변을 확인하실 수 있어요.";
   card.appendChild(notifyNotice);
 
   const textarea = document.createElement("textarea");
@@ -314,113 +310,6 @@ function renderTicketForm() {
   appendBackToMenuButton();
 }
 
-function formatTicketStatus(status) {
-  if (status === "answered") return "답변완료";
-  if (status === "closed") return "종료";
-  return "미답변";
-}
-
-function renderTicketPickerList(phone, tickets) {
-  const card = document.createElement("div");
-  card.className = "bubble bot menu-card";
-  messagesEl.appendChild(card);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-
-  tickets.forEach((t) => {
-    const label = `HR-${formatTicketNo(t.id)} · ${formatTicketStatus(t.status)} · ${new Date(t.created_at).toLocaleDateString("ko-KR")}`;
-    addMenuButtonTo(card, label, async () => {
-      try {
-        const res = await fetch(
-          `/api/tickets/lookup?id=${encodeURIComponent(t.id)}&phone=${encodeURIComponent(phone)}`
-        );
-        if (!res.ok) throw new Error("not found");
-        const data = await res.json();
-        renderThreadView(t.id, phone, data.messages);
-      } catch (err) {
-        addBubble("문의를 불러오지 못했어요. 다시 시도해주세요.", "bot");
-      }
-    });
-  });
-}
-
-function renderLookupForm() {
-  const card = document.createElement("div");
-  card.className = "bubble bot ticket-form";
-
-  const intro = document.createElement("div");
-  intro.className = "ticket-form-intro";
-  intro.textContent = "문의 접수 시 입력한 이름과 연락처를 입력해주세요.";
-  card.appendChild(intro);
-
-  const savedLookup = getSavedIdentity();
-
-  const nameInput = document.createElement("input");
-  nameInput.type = "text";
-  nameInput.placeholder = "이름";
-  nameInput.value = savedLookup.name;
-  card.appendChild(nameInput);
-
-  const phoneInput = document.createElement("input");
-  phoneInput.type = "tel";
-  phoneInput.placeholder = "연락처 (예: 010-1234-5678)";
-  phoneInput.value = savedLookup.phone;
-  attachPhoneAutoFormat(phoneInput);
-  card.appendChild(phoneInput);
-
-  const errorMsg = document.createElement("div");
-  errorMsg.className = "ticket-form-error";
-  card.appendChild(errorMsg);
-
-  const submitBtn = document.createElement("button");
-  submitBtn.type = "button";
-  submitBtn.textContent = "조회";
-  card.appendChild(submitBtn);
-
-  submitBtn.addEventListener("click", async () => {
-    const name = nameInput.value.trim();
-    const phone = phoneInput.value.trim();
-    errorMsg.textContent = "";
-
-    if (!name || !phone) {
-      errorMsg.textContent = "이름과 연락처를 모두 입력해주세요.";
-      return;
-    }
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = "조회 중...";
-
-    try {
-      const res = await fetch(
-        `/api/tickets/lookup?name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}`
-      );
-      if (!res.ok) throw new Error("not found");
-      const data = await res.json();
-      card.remove();
-      saveIdentity(name, phone);
-
-      if (data.tickets.length === 1) {
-        const res2 = await fetch(
-          `/api/tickets/lookup?id=${encodeURIComponent(data.tickets[0].id)}&phone=${encodeURIComponent(phone)}`
-        );
-        const data2 = await res2.json();
-        renderThreadView(data.tickets[0].id, phone, data2.messages);
-      } else {
-        addBubble("입력하신 정보로 접수된 문의가 여러 건 있어요. 확인할 문의를 선택해주세요.", "bot");
-        renderTicketPickerList(phone, data.tickets);
-        appendBackToMenuButton();
-      }
-    } catch (err) {
-      submitBtn.disabled = false;
-      submitBtn.textContent = "조회";
-      errorMsg.textContent = "문의를 찾을 수 없어요. 이름과 연락처를 확인해주세요.";
-    }
-  });
-
-  messagesEl.appendChild(card);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-  appendBackToMenuButton();
-}
-
 function renderThreadMessage(container, m) {
   const bubble = document.createElement("div");
   bubble.className = `thread-msg ${m.sender === "hr" ? "hr" : "user"}`;
@@ -436,24 +325,12 @@ function renderThreadView(ticketId, phone, initialMessages) {
 
   const title = document.createElement("div");
   title.className = "ticket-form-intro";
-  title.textContent = `문의번호 HR-${formatTicketNo(ticketId)} 대화`;
+  title.textContent = `문의번호 HR-${formatTicketNo(ticketId)} 확인`;
   container.appendChild(title);
 
   const threadMessages = document.createElement("div");
   threadMessages.className = "thread-messages";
   container.appendChild(threadMessages);
-
-  const inputRow = document.createElement("div");
-  inputRow.className = "thread-input-row";
-  const msgInput = document.createElement("input");
-  msgInput.type = "text";
-  msgInput.placeholder = "추가로 남길 말을 입력하세요";
-  const sendBtn = document.createElement("button");
-  sendBtn.type = "button";
-  sendBtn.textContent = "전송";
-  inputRow.appendChild(msgInput);
-  inputRow.appendChild(sendBtn);
-  container.appendChild(inputRow);
 
   messagesEl.appendChild(container);
   messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -463,6 +340,12 @@ function renderThreadView(ticketId, phone, initialMessages) {
   function renderAll(msgs) {
     threadMessages.innerHTML = "";
     msgs.forEach((m) => renderThreadMessage(threadMessages, m));
+    if (!msgs.some((m) => m.sender === "hr")) {
+      const waiting = document.createElement("div");
+      waiting.className = "thread-msg hr waiting";
+      waiting.textContent = "아직 답변 전이에요. 답변이 등록되면 자동으로 여기에 표시돼요.";
+      threadMessages.appendChild(waiting);
+    }
     renderedCount = msgs.length;
     threadMessages.scrollTop = threadMessages.scrollHeight;
   }
@@ -485,28 +368,6 @@ function renderThreadView(ticketId, phone, initialMessages) {
   }
 
   pollingInterval = setInterval(refresh, 3000);
-
-  sendBtn.addEventListener("click", async () => {
-    const message = msgInput.value.trim();
-    if (!message) return;
-    sendBtn.disabled = true;
-
-    try {
-      const res = await fetch("/api/tickets/message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: ticketId, phone, message })
-      });
-      if (!res.ok) throw new Error("send failed");
-      const data = await res.json();
-      renderAll(data.messages);
-      msgInput.value = "";
-    } catch (err) {
-      msgInput.placeholder = "전송 실패, 다시 시도해주세요";
-    } finally {
-      sendBtn.disabled = false;
-    }
-  });
 
   appendBackToMenuButton();
 }

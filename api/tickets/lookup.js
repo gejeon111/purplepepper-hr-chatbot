@@ -7,27 +7,13 @@ module.exports = async function handler(req, res) {
   }
   await ensureTables();
 
-  const { id, name, phone } = req.query;
+  const { id, phone } = req.query;
   if (!phone) {
     res.status(400).json({ error: "phone is required" });
     return;
   }
-
   if (!id) {
-    if (!name) {
-      res.status(400).json({ error: "name is required" });
-      return;
-    }
-    const { rows: tickets } = await sql`
-      SELECT display_no AS id, status, created_at FROM tickets
-      WHERE name = ${name} AND phone = ${phone}
-      ORDER BY created_at DESC
-    `;
-    if (tickets.length === 0) {
-      res.status(404).json({ error: "No tickets found" });
-      return;
-    }
-    res.status(200).json({ tickets });
+    res.status(400).json({ error: "id is required" });
     return;
   }
 
