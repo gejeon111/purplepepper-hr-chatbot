@@ -148,11 +148,21 @@ function selectSubcategory(subcategory) {
   }, 300);
 }
 
+function mentionsHrContact(answer) {
+  return /인사팀/.test(answer) && /문의|연락/.test(answer);
+}
+
 function selectQuestion(item) {
   addBubble(item.question, "user");
   setTimeout(() => {
     addBubble(item.answer, "bot");
     setTimeout(() => {
+      if (mentionsHrContact(item.answer)) {
+        const contactCard = createMenuCard();
+        addMenuButtonTo(contactCard, "📩 인사팀에 문의하기", () => {
+          setTimeout(() => renderTicketForm(), 200);
+        });
+      }
       addBubble("다른 궁금한 점이 있으신가요?", "bot");
       showCategoryMenu();
     }, 400);
