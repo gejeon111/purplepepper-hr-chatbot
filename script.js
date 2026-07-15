@@ -111,6 +111,38 @@ function backToMenu() {
   showCategoryMenu();
 }
 
+function renderCategoryLevelMenu(category) {
+  const subcategories = CATEGORIES.filter((c) => c.parent_id === category.id);
+  const directItems = QNA_DATA.qna.filter((item) => item.category_id === category.id);
+
+  addBubble("궁금한 항목을 선택해주세요.", "bot");
+  const card = createMenuCard();
+  subcategories.forEach((sub) => {
+    addMenuButtonTo(card, sub.label, () => selectSubcategory(sub));
+  });
+  directItems.forEach((item) => {
+    addMenuButtonTo(card, item.question, () => selectQuestion(item, () => renderCategoryLevelMenu(category)));
+  });
+  addMenuButtonTo(card, "◀ 이전", backToMenu);
+}
+
+function renderSubcategoryLevelMenu(subcategory) {
+  addBubble("궁금한 항목을 선택해주세요.", "bot");
+  const card = createMenuCard();
+  const items = QNA_DATA.qna.filter((item) => item.category_id === subcategory.id);
+  items.forEach((item) => {
+    addMenuButtonTo(card, item.question, () => selectQuestion(item, () => renderSubcategoryLevelMenu(subcategory)));
+  });
+  const parentCategory = CATEGORIES.find((c) => c.id === subcategory.parent_id);
+  addMenuButtonTo(card, "◀ 이전", () => {
+    if (parentCategory) {
+      renderCategoryLevelMenu(parentCategory);
+    } else {
+      backToMenu();
+    }
+  });
+}
+
 function selectCategory(category) {
   addBubble(category.label, "user");
 
@@ -119,40 +151,19 @@ function selectCategory(category) {
     return;
   }
 
-  const subcategories = CATEGORIES.filter((c) => c.parent_id === category.id);
-  const directItems = QNA_DATA.qna.filter((item) => item.category_id === category.id);
-
-  setTimeout(() => {
-    addBubble("궁금한 항목을 선택해주세요.", "bot");
-    const card = createMenuCard();
-    subcategories.forEach((sub) => {
-      addMenuButtonTo(card, sub.label, () => selectSubcategory(sub));
-    });
-    directItems.forEach((item) => {
-      addMenuButtonTo(card, item.question, () => selectQuestion(item));
-    });
-    addMenuButtonTo(card, "◀ 메뉴로", backToMenu);
-  }, 300);
+  setTimeout(() => renderCategoryLevelMenu(category), 300);
 }
 
 function selectSubcategory(subcategory) {
   addBubble(subcategory.label, "user");
-  setTimeout(() => {
-    addBubble("궁금한 항목을 선택해주세요.", "bot");
-    const card = createMenuCard();
-    const items = QNA_DATA.qna.filter((item) => item.category_id === subcategory.id);
-    items.forEach((item) => {
-      addMenuButtonTo(card, item.question, () => selectQuestion(item));
-    });
-    addMenuButtonTo(card, "◀ 메뉴로", backToMenu);
-  }, 300);
+  setTimeout(() => renderSubcategoryLevelMenu(subcategory), 300);
 }
 
 function mentionsHrContact(answer) {
   return /인사팀/.test(answer) && /문의|연락/.test(answer);
 }
 
-function selectQuestion(item) {
+function selectQuestion(item, returnFn) {
   addBubble(item.question, "user");
   setTimeout(() => {
     addBubble(item.answer, "bot");
@@ -164,7 +175,11 @@ function selectQuestion(item) {
         });
       }
       addBubble("다른 궁금한 점이 있으신가요?", "bot");
-      showCategoryMenu();
+      if (returnFn) {
+        returnFn();
+      }
+      const homeCard = createMenuCard();
+      addMenuButtonTo(homeCard, "🏠 처음 화면으로 돌아가기", backToMenu);
     }, 400);
   }, 300);
 }
@@ -184,7 +199,7 @@ function attachPhoneAutoFormat(inputEl) {
 
 function appendBackToMenuButton() {
   const card = createMenuCard();
-  addMenuButtonTo(card, "◀ 메뉴로", backToMenu);
+  addMenuButtonTo(card, "◀ 이전", backToMenu);
 }
 
 function renderTicketForm() {
