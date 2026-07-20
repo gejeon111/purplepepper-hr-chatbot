@@ -59,15 +59,47 @@ function findAnswer(userText) {
     }
   }
 
-  return bestScore > 0 ? bestMatch.answer : QNA_DATA.fallback;
+  return bestScore > 0 ? bestMatch.answer : null;
 }
 
-function handleFreeTextMessage(text) {
+async function askAi(question) {
+  try {
+    const res = await fetch("/api/ask-ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.answer || null;
+  } catch (err) {
+    return null;
+  }
+}
+
+async function handleFreeTextMessage(text) {
   const trimmed = text.trim();
   if (!trimmed) return;
   addBubble(trimmed, "user");
-  const answer = findAnswer(trimmed);
-  setTimeout(() => addBubble(answer, "bot"), 300);
+
+  const matchedAnswer = findAnswer(trimmed);
+  if (matchedAnswer) {
+    setTimeout(() => addBubble(matchedAnswer, "bot"), 300);
+    return;
+  }
+
+  const thinkingBubble = addBubble("🤔 답변을 찾고 있어요...", "bot");
+  const aiAnswer = await askAi(trimmed);
+  thinkingBubble.remove();
+
+  const answer = aiAnswer || QNA_DATA.fallback;
+  addBubble(answer, "bot");
+  if (mentionsHrContact(answer)) {
+    const contactCard = createMenuCard();
+    addMenuButtonTo(contactCard, "📩 인사팀에 문의하기", () => {
+      setTimeout(() => renderTicketForm(), 200);
+    });
+  }
 }
 
 inputForm.addEventListener("submit", (e) => {
